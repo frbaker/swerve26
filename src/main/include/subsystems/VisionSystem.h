@@ -14,6 +14,7 @@
  */
 struct VisionTarget {
     bool hasTarget = false;
+    bool isDataFresh = false;   // true if data was updated recently
     double yaw = 0.0;           // degrees
     double pitch = 0.0;         // degrees
     double distance = 0.0;      // meters
@@ -50,6 +51,14 @@ class VisionSystem {
    */
   bool HasTarget();
 
+  /**
+   * Check if vision data is fresh (updated recently)
+   * @param maxAge Maximum age in seconds (default 0.5s)
+   * @return true if data was updated within maxAge seconds
+   */
+  bool IsDataFresh(double maxAge = 0.5);
+
  private:
   std::shared_ptr<nt::NetworkTable> m_visionTable;
+  std::shared_ptr<nt::NetworkTableEntry> m_hasTargetEntry;
 };

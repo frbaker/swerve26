@@ -20,20 +20,28 @@ Your OrangePi vision system must publish the following values to NetworkTables:
 
 The robot uses vision data for the following features:
 
-### 1. TractorBeam Mode (Left Bumper / Right Bumper)
-- Automatically drives and rotates toward the target
-- Left bumper: approaches with 6-inch left offset
-- Right bumper: approaches with 6-inch right offset
+### 1. Vision-Assisted Rotation (Left Bumper)
+- Driver controls forward/backward/strafe movement with left joystick
+- Robot automatically rotates to face target using PID control
+- Falls back to normal driver control if no target or data is stale
+- Uses target `yaw` for rotation
+
+### 2. Full Auto-Drive (Right Bumper)
+- Robot automatically rotates AND drives to the target using PID control
+- Completely autonomous - no driver input needed
+- Falls back to normal driver control if no target or data is stale
 - Uses target `yaw`, `distance`, and `area`
 
-### 2. Vision-Assisted Drive (B Button)
-- Driver controls movement (left stick)
-- Robot automatically rotates to face target
+### 3. Vision-Assisted Drive (B Button)
+- Same as left bumper - driver controls movement, robot auto-rotates
 - Uses target `yaw`
 
-### 3. Elevator Safety (Commented Out)
+### 4. Elevator Safety (Commented Out)
 - Optional feature to prevent elevator damage when too close to target
 - Uses target `area` to determine proximity
+
+### Data Freshness Detection
+The robot checks if vision data is fresh (updated within 0.5 seconds). If data becomes stale or the target is lost, control automatically returns to the driver. This prevents the robot from acting on old vision information.
 
 ## OrangePi Setup Requirements
 
@@ -51,7 +59,9 @@ The robot uses vision data for the following features:
 
 3. **Update Rate**
    - Recommend publishing at 20-50 Hz for smooth operation
+   - **IMPORTANT**: Must publish continuously even when no target is detected
    - Set `HasTarget` to `false` when no valid target is detected
+   - Robot checks data freshness - stale data (>0.5s old) will be ignored
 
 ## Example Python Code (OrangePi)
 

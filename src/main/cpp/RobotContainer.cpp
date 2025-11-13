@@ -198,57 +198,69 @@ void RobotContainer::ConfigureButtonBindings() {
         fieldRelative = true;
     }, {&m_drive}));
 
-    //Tractor Beam - left - experimental - robot rotates and drives to target automagically - with an offset of 6 inches to the left
+    //Vision-Assisted Rotation - Left Bumper
+    //Robot auto-rotates to face target with PID, driver controls forward/backward movement
     frc2::JoystickButton(&m_driverController, frc::XboxController::Button::kLeftBumper).WhileTrue(new frc2::RunCommand([this] {
-        elevatorOverrideHeight = kElevatorForceDriveToCoDriverHeight;
         VisionTarget target = GetTarget();
-        if (target.hasTarget) {
-                        frc::SmartDashboard::PutNumber("targetArea", target.area);
-                        frc::SmartDashboard::PutNumber("targetDistance", target.distance);
-                        units::meter_t distance{target.distance};
-                        m_drive.TractorBeam(distance, true, units::degree_t(target.yaw), target.area); //true goes to the left
-                    }
-                    else {
-                       DriverControl();
-                    }
+        if (target.hasTarget && target.isDataFresh) {
+            frc::SmartDashboard::PutNumber("targetYaw", target.yaw);
+            frc::SmartDashboard::PutBoolean("visionActive", true);
+            // Driver controls movement, robot auto-rotates to face target
+            m_drive.PhotonDrive(
+                -units::meters_per_second_t{frc::ApplyDeadband(m_driverController.GetLeftY(), OIConstants::kDriveDeadband)},
+                -units::meters_per_second_t{frc::ApplyDeadband(m_driverController.GetLeftX(), OIConstants::kDriveDeadband)},
+                units::degree_t(target.yaw));
+        }
+        else {
+            frc::SmartDashboard::PutBoolean("visionActive", false);
+            DriverControl();
+        }
     }, {&m_drive}));
 
-    //Tractor Beam - right - experimental - robot rotates and drives to target automagically - with an offset of 6 inches to the right
+    //Full Auto-Drive - Right Bumper
+    //Robot auto-rotates AND auto-drives to target with PID control
     frc2::JoystickButton(&m_driverController, frc::XboxController::Button::kRightBumper).WhileTrue(new frc2::RunCommand([this] {
         elevatorOverrideHeight = kElevatorForceDriveToCoDriverHeight;
         VisionTarget target = GetTarget();
-        if (target.hasTarget) {
-                        frc::SmartDashboard::PutNumber("targetArea", target.area);
-                        frc::SmartDashboard::PutNumber("targetDistance", target.distance);
-                        units::meter_t distance{target.distance};
-                        m_drive.TractorBeam(distance, false, units::degree_t(target.yaw), target.area); //false goes to the right
-                    }
-                    else {
-                       DriverControl();
-                    }
+        if (target.hasTarget && target.isDataFresh) {
+            frc::SmartDashboard::PutNumber("targetArea", target.area);
+            frc::SmartDashboard::PutNumber("targetDistance", target.distance);
+            frc::SmartDashboard::PutNumber("targetYaw", target.yaw);
+            frc::SmartDashboard::PutBoolean("visionActive", true);
+            // Robot auto-rotates and auto-drives to target
+            units::meter_t distance{target.distance};
+            m_drive.TractorBeam(distance, false, units::degree_t(target.yaw), target.area);
+        }
+        else {
+            frc::SmartDashboard::PutBoolean("visionActive", false);
+            DriverControl();
+        }
     }, {&m_drive}));
 
-    //Vision-assisted Drive - driver controls driving, robot rotates to face target
+    //Vision-assisted Drive - B Button (same as left bumper)
+    //Driver controls driving, robot rotates to face target
     frc2::JoystickButton(&m_driverController, frc::XboxController::Button::kB).WhileTrue(new frc2::RunCommand([this] {
         VisionTarget target = GetTarget();
-        if (target.hasTarget) {
-                        m_drive.PhotonDrive(
+        if (target.hasTarget && target.isDataFresh) {
+            frc::SmartDashboard::PutBoolean("visionActive", true);
+            m_drive.PhotonDrive(
                 //driver controls direction of travel, rotation faces target
-                            -units::meters_per_second_t{frc::ApplyDeadband(m_driverController.GetLeftY(), OIConstants::kDriveDeadband)},
-                            -units::meters_per_second_t{frc::ApplyDeadband(m_driverController.GetLeftX(), OIConstants::kDriveDeadband)},
-                            units::degree_t(target.yaw));
-                    }
-                    else {
-                        DriverControl();
-                    }
+                -units::meters_per_second_t{frc::ApplyDeadband(m_driverController.GetLeftY(), OIConstants::kDriveDeadband)},
+                -units::meters_per_second_t{frc::ApplyDeadband(m_driverController.GetLeftX(), OIConstants::kDriveDeadband)},
+                units::degree_t(target.yaw));
+        }
+        else {
+            frc::SmartDashboard::PutBoolean("visionActive", false);
+            DriverControl();
+        }
       }, {&m_drive}));
 
 
     /*frc2::JoystickButton(&m_coDriverController, frc::XboxController::Button::kX).WhileTrue(new frc2::RunCommand([this] {
         //it's possible that we are too close to safely raise the elevator
-        //if a target is present - to avoid damaging the robot we run only if it is safe.
+        //if a target is present with fresh data - to avoid damaging the robot we run only if it is safe.
         VisionTarget target = GetTarget();
-        if (target.hasTarget) {
+        if (target.hasTarget && target.isDataFresh) {
             if (target.area < ElevatorConstants::kElevatorToCloseToReef){
                 m_elevator.SetpointMovement();
             }
@@ -261,9 +273,9 @@ void RobotContainer::ConfigureButtonBindings() {
 
     /*frc2::JoystickButton(&m_coDriverController, frc::XboxController::Button::kA).WhileTrue(new frc2::RunCommand([this] {
          //it's possible that we are too close to safely lower the elevator
-        //if a target is present - to avoid damaging the robot we run only if it is safe.
+        //if a target is present with fresh data - to avoid damaging the robot we run only if it is safe.
         VisionTarget target = GetTarget();
-        if (target.hasTarget) {
+        if (target.hasTarget && target.isDataFresh) {
             if (target.area < ElevatorConstants::kElevatorToCloseToReef){
                 m_elevator.SetpointMovement();
             }
