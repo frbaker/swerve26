@@ -17,7 +17,7 @@
 #include <rev/SparkMax.h>
 #include <rev/SparkLowLevel.h>
 #include "Constants.h"
-#include <photon/PhotonCamera.h>
+#include "subsystems/VisionSystem.h"
 #include "subsystems/DriveSubsystem.h"
 #include "subsystems/CoralCollector.h"
 #include "subsystems/Elevator.h"
@@ -58,13 +58,13 @@ class RobotContainer {
 
   frc::SendableChooser<frc2::Command*> m_chooser;
 
-  photon::PhotonCamera camera{"boom"};
+  VisionSystem m_vision;
   bool isValueInArray(int value, int array[], int size);
   void DriverControl();
   void ElevatorControl();
   void ClimberControl();
   void coDriverControl();
-  photon::PhotonTrackedTarget hasValidAprilTagTarget();
+  VisionTarget GetTarget();
   // The chooser for the autonomous routines
   
 

@@ -67,18 +67,12 @@ namespace DriveConstants {
     constexpr int kFrontRightTurningCanId = 29;
     constexpr int kRearRightTurningCanId = 14;
 
-    //needs to be adjusted per our robot
+    // Vision System Constants (for reference)
+    // NOTE: These are no longer used for distance calculations
+    // The OrangePi custom vision system provides distance directly via NetworkTables
   const units::meter_t CAMERA_HEIGHT = 10.5_in;
-
-// Angle between horizontal and the camera.
   const units::radian_t CAMERA_PITCH = 0_deg;
-
-    //Each target may be at a different height
-  const units::meter_t TARGET_HEIGHT = 12.0625_in; 
-  //const units::meter_t TARGET_HEIGHT = 15.375_in;
-  //bottom of april tag is 8.875_in (reef)
-  //top of april tag is 15.25_in (reef)
-  //center is 12.0625_in (reef)
+  const units::meter_t TARGET_HEIGHT = 12.0625_in;
 
   const bool FIELD_RELATIVE = true;
 
@@ -181,7 +175,8 @@ namespace PivotConstants {
 namespace ElevatorConstants {
   constexpr int kElevatorLeftCanId = 10;
 
-  constexpr int reefTags[12] = {6, 7, 8, 9, 10, 11, 17, 18, 19, 20, 21, 22};
+  // NOTE: No longer used - target filtering now handled by OrangePi vision system
+  // constexpr int reefTags[12] = {6, 7, 8, 9, 10, 11, 17, 18, 19, 20, 21, 22};
   constexpr double kElevatorMinHeight = 0;    
   constexpr double kElevatorMaxHeight = 25;      //todo - needs to be measured and set
   /*constexpr double kTroughSetPoint = -48;          //todo - needs to be measured and set

@@ -25,7 +25,6 @@
 #include "subsystems/DriveSubsystem.h"
 #include "subsystems/Elevator.h"
 #include "subsystems/CoralCollector.h"
-#include <photon/PhotonUtils.h>
 
 #include <frc/DriverStation.h>
 
@@ -169,22 +168,10 @@ void RobotContainer::coDriverControl() {
             fieldRelative, true);
 }
 
-photon::PhotonTrackedTarget RobotContainer::hasValidAprilTagTarget() {
-    std::vector<photon::PhotonPipelineResult> results = camera.GetAllUnreadResults();
-    if (!results.empty()) {
-        photon::PhotonPipelineResult result = results.back(); //back gets only the most recent
-        if (result.HasTargets()) {
-            for (auto target : result.GetTargets()) {
-                int targetID = target.GetFiducialId();
-                bool found = std::any_of(std::begin(ElevatorConstants::reefTags), std::end(ElevatorConstants::reefTags), [targetID](int x) { return x == targetID; });
-                if (found){
-                    return target;
-                }
-            }
-        }
-    }
-    // If no valid target found, return an empty PhotonTrackedTarget
-    return photon::PhotonTrackedTarget();
+VisionTarget RobotContainer::GetTarget() {
+    // Simply return the current target from the vision system
+    // No filtering needed - the OrangePi vision system will handle target selection
+    return m_vision.GetTarget();
 }
 
 
@@ -212,16 +199,14 @@ void RobotContainer::ConfigureButtonBindings() {
     }, {&m_drive}));
 
     //Tractor Beam - left - experimental - robot rotates and drives to target automagically - with an offset of 6 inches to the left
-    //TODO - This needs to be updated, we need stop centered on the april tag with some distance, then control will be passed to the codriver 
-    //raise elevator and move to final scoring position.
-    frc2::JoystickButton(&m_driverController, frc::XboxController::Button::kLeftBumper).WhileTrue(new frc2::RunCommand([this] { 
+    frc2::JoystickButton(&m_driverController, frc::XboxController::Button::kLeftBumper).WhileTrue(new frc2::RunCommand([this] {
         elevatorOverrideHeight = kElevatorForceDriveToCoDriverHeight;
-        photon::PhotonTrackedTarget target = hasValidAprilTagTarget();
-        if (target.GetFiducialId() > 0) {
-                        double targetArea = target.GetArea();
-                        frc::SmartDashboard::PutNumber("tagetArea", targetArea);
-                        units::meter_t distance = photon::PhotonUtils::CalculateDistanceToTarget(CAMERA_HEIGHT, TARGET_HEIGHT, CAMERA_PITCH, units::radian_t{target.GetPitch()});
-                        m_drive.TractorBeam(distance, true, units::degree_t(target.GetYaw()), targetArea); //true goes to the left
+        VisionTarget target = GetTarget();
+        if (target.hasTarget) {
+                        frc::SmartDashboard::PutNumber("targetArea", target.area);
+                        frc::SmartDashboard::PutNumber("targetDistance", target.distance);
+                        units::meter_t distance{target.distance};
+                        m_drive.TractorBeam(distance, true, units::degree_t(target.yaw), target.area); //true goes to the left
                     }
                     else {
                        DriverControl();
@@ -229,33 +214,29 @@ void RobotContainer::ConfigureButtonBindings() {
     }, {&m_drive}));
 
     //Tractor Beam - right - experimental - robot rotates and drives to target automagically - with an offset of 6 inches to the right
-    //TODO - This needs to be updated, we need stop centered on the april tag with some distance, then control will be passed to the codriver 
-    //raise elevator and move to final scoring position.
-    frc2::JoystickButton(&m_driverController, frc::XboxController::Button::kRightBumper).WhileTrue(new frc2::RunCommand([this] { 
+    frc2::JoystickButton(&m_driverController, frc::XboxController::Button::kRightBumper).WhileTrue(new frc2::RunCommand([this] {
         elevatorOverrideHeight = kElevatorForceDriveToCoDriverHeight;
-        photon::PhotonTrackedTarget target = hasValidAprilTagTarget();
-        if (target.GetFiducialId() > 0) {
-                        double targetArea = target.GetArea();
-                        //if the targeting region of target_height is set to top, this should be the height of the top of the target Thus, .17 meters plus 6.5 inches equals 0.3351 meters
-                        //if this doesn't work, we can try the center of the target or the bottom of target
-                        //Todo: adjust camera height based on actual measurement in constants.h, adjust target height to either top, center, or bottom?
-                        units::meter_t distance = photon::PhotonUtils::CalculateDistanceToTarget(CAMERA_HEIGHT, TARGET_HEIGHT, CAMERA_PITCH, units::radian_t{target.GetPitch()});
-                        m_drive.TractorBeam(distance, false, units::degree_t(target.GetYaw()), targetArea); //false goes to the right
+        VisionTarget target = GetTarget();
+        if (target.hasTarget) {
+                        frc::SmartDashboard::PutNumber("targetArea", target.area);
+                        frc::SmartDashboard::PutNumber("targetDistance", target.distance);
+                        units::meter_t distance{target.distance};
+                        m_drive.TractorBeam(distance, false, units::degree_t(target.yaw), target.area); //false goes to the right
                     }
                     else {
                        DriverControl();
                     }
     }, {&m_drive}));
 
-    //Photon Drive - driver still controls driving - but robot rotates front of bot facing toward visible reef april tag
-    frc2::JoystickButton(&m_driverController, frc::XboxController::Button::kB).WhileTrue(new frc2::RunCommand([this] { 
-        photon::PhotonTrackedTarget target = hasValidAprilTagTarget();
-        if (target.GetFiducialId() > 0) {
+    //Vision-assisted Drive - driver controls driving, robot rotates to face target
+    frc2::JoystickButton(&m_driverController, frc::XboxController::Button::kB).WhileTrue(new frc2::RunCommand([this] {
+        VisionTarget target = GetTarget();
+        if (target.hasTarget) {
                         m_drive.PhotonDrive(
-                //driver controls direction of travel, but rotation faces reef april tag
+                //driver controls direction of travel, rotation faces target
                             -units::meters_per_second_t{frc::ApplyDeadband(m_driverController.GetLeftY(), OIConstants::kDriveDeadband)},
                             -units::meters_per_second_t{frc::ApplyDeadband(m_driverController.GetLeftX(), OIConstants::kDriveDeadband)},
-                            units::degree_t(target.GetYaw()));
+                            units::degree_t(target.yaw));
                     }
                     else {
                         DriverControl();
@@ -264,12 +245,11 @@ void RobotContainer::ConfigureButtonBindings() {
 
 
     /*frc2::JoystickButton(&m_coDriverController, frc::XboxController::Button::kX).WhileTrue(new frc2::RunCommand([this] {
-        //it's possible that we are too close to the reef to safely raise the elevator
-        //if an april tag is present - to avoid damaging the robot we run only if it is safe. 
-        photon::PhotonTrackedTarget target = hasValidAprilTagTarget();
-        if (target.GetFiducialId() > 0) {
-            double targetArea = target.GetArea();
-            if (targetArea < ElevatorConstants::kElevatorToCloseToReef){
+        //it's possible that we are too close to safely raise the elevator
+        //if a target is present - to avoid damaging the robot we run only if it is safe.
+        VisionTarget target = GetTarget();
+        if (target.hasTarget) {
+            if (target.area < ElevatorConstants::kElevatorToCloseToReef){
                 m_elevator.SetpointMovement();
             }
         }
@@ -280,12 +260,11 @@ void RobotContainer::ConfigureButtonBindings() {
     }, {&m_elevator}));*/
 
     /*frc2::JoystickButton(&m_coDriverController, frc::XboxController::Button::kA).WhileTrue(new frc2::RunCommand([this] {
-         //it's possible that we are too close to the reef to safely lower the elevator
-        //if an april tag is present - to avoid damaging the robot we run only if it is safe. 
-        photon::PhotonTrackedTarget target = hasValidAprilTagTarget();
-        if (target.GetFiducialId() > 0) {
-            double targetArea = target.GetArea();
-            if (targetArea < ElevatorConstants::kElevatorToCloseToReef){
+         //it's possible that we are too close to safely lower the elevator
+        //if a target is present - to avoid damaging the robot we run only if it is safe.
+        VisionTarget target = GetTarget();
+        if (target.hasTarget) {
+            if (target.area < ElevatorConstants::kElevatorToCloseToReef){
                 m_elevator.SetpointMovement();
             }
         }
