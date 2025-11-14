@@ -77,6 +77,9 @@ class LEDs : public frc2::SubsystemBase {
   bool m_enabled{true};
   Mode m_mode{Mode::kDirectional};
 
+  // Track if robot has been enabled (used for match vs pre-match)
+  bool m_hasBeenEnabled{false};
+
   int m_rainbowFirstPixelHue{0};
   int m_chaseOffset{0};
 

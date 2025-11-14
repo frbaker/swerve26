@@ -38,11 +38,25 @@ void LEDs::Periodic() {
     return;
   }
 
-  // When robot is disabled (not in match), show fire effect
+  // Track if robot has been enabled (for post-match fire effect)
+  if (!frc::DriverStation::IsDisabled()) {
+    m_hasBeenEnabled = true;
+  }
+
+  // When robot is disabled
   if (frc::DriverStation::IsDisabled()) {
-    UpdateFireMode();
-    m_led.SetData(m_ledBuffer);
-    return;
+    // Before match (never been enabled): No LEDs
+    if (!m_hasBeenEnabled) {
+      UpdateDisabledMode();
+      m_led.SetData(m_ledBuffer);
+      return;
+    }
+    // After match (has been enabled): Fire effect
+    else {
+      UpdateFireMode();
+      m_led.SetData(m_ledBuffer);
+      return;
+    }
   }
 
   // When robot is enabled, use selected mode
