@@ -15,6 +15,13 @@ from networktables import NetworkTables
 from dt_apriltags import Detector
 import logging
 
+# Camera streaming
+try:
+    from cscore import CameraServer
+    CSCORE_AVAILABLE = True
+except ImportError:
+    CSCORE_AVAILABLE = False
+
 class VisionSystem:
     def __init__(self, config_path='config.json'):
         """Initialize the vision system"""
@@ -74,6 +81,11 @@ class VisionSystem:
         self.fps_counter = 0
         self.current_fps = 0
 
+        # Initialize camera streaming
+        self.output_stream = None
+        if self.config.get('streaming', {}).get('enabled', False):
+            self.output_stream = self.setup_streaming()
+
     def setup_networktables(self):
         """Initialize NetworkTables connection to RoboRIO"""
         team_number = self.config['robot']['team_number']
@@ -115,6 +127,45 @@ class VisionSystem:
 
         self.logger.info(f"Camera opened: {self.config['camera']['width']}x{self.config['camera']['height']} @ {self.config['camera']['fps']}fps")
         return camera
+
+    def setup_streaming(self):
+        """Setup MJPEG camera stream for driver station"""
+        if not CSCORE_AVAILABLE:
+            self.logger.warning("cscore not available - camera streaming disabled")
+            self.logger.warning("Install with: pip install robotpy-cscore")
+            return None
+
+        try:
+            # Get streaming config
+            stream_config = self.config.get('streaming', {})
+            port = stream_config.get('port', 1181)
+            quality = stream_config.get('quality', 80)
+
+            # Create camera server instance
+            cs = CameraServer.getInstance()
+            cs.enableLogging()
+
+            # Create output stream
+            width = self.config['camera']['width']
+            height = self.config['camera']['height']
+
+            output_stream = cs.putVideo(
+                "Vision System",
+                width,
+                height
+            )
+
+            self.logger.info(f"Camera stream started on port {port}")
+            self.logger.info(f"View stream at: http://10.{self.config['robot']['team_number']//100}.{self.config['robot']['team_number']%100}.50:{port}/?action=stream")
+
+            # Store quality setting for JPEG compression
+            self.stream_quality = quality
+
+            return output_stream
+
+        except Exception as e:
+            self.logger.error(f"Failed to setup camera streaming: {e}")
+            return None
 
     def detect_yolo_targets(self, frame):
         """Detect game pieces using YOLO"""
@@ -432,19 +483,28 @@ class VisionSystem:
                 # Publish to NetworkTables
                 self.publish_target(has_target, target_data)
 
+                # Create annotated frame for display/streaming
+                annotated_frame = self.draw_overlays(
+                    frame.copy(),
+                    yolo_targets,
+                    apriltag_targets,
+                    selected_target,
+                    target_data
+                )
+
                 # Display debug window if enabled
                 if self.config['debug']['show_window']:
-                    debug_frame = self.draw_overlays(
-                        frame.copy(),
-                        yolo_targets,
-                        apriltag_targets,
-                        selected_target,
-                        target_data
-                    )
-                    cv2.imshow('Vision System', debug_frame)
+                    cv2.imshow('Vision System', annotated_frame)
 
                     if cv2.waitKey(1) & 0xFF == ord('q'):
                         break
+
+                # Stream to driver station if enabled
+                if self.output_stream is not None:
+                    try:
+                        self.output_stream.putFrame(annotated_frame)
+                    except Exception as e:
+                        self.logger.error(f"Failed to stream frame: {e}")
 
                 # Update FPS
                 self.update_fps()

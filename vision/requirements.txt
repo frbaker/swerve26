@@ -11,5 +11,8 @@ dt-apriltags>=3.3.0
 # NetworkTables for FRC communication
 pynetworktables>=2021.0.0
 
+# Camera streaming to driver station
+robotpy-cscore>=2024.0.0
+
 # Utilities
 Pillow>=10.0.0
