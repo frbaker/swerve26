@@ -261,6 +261,8 @@ If no camera detected:
 
 ### 3. Test Camera with Python
 
+**Note**: This test uses system Python (not venv), which has `python3-opencv` from Part 4.
+
 ```bash
 python3 << 'EOF'
 import cv2
@@ -285,6 +287,13 @@ EOF
 ```
 
 You should see: `✅ SUCCESS: Camera working!`
+
+**If you get `ModuleNotFoundError: No module named 'cv2'`**:
+```bash
+# Verify python3-opencv is installed
+sudo apt install -y python3-opencv
+# Then retry the test above
+```
 
 ---
 
@@ -368,9 +377,55 @@ pip install -r requirements.txt
 # - opencv-python
 # - numpy
 # - pynetworktables
-# - pupil-apriltags
+# - dt-apriltags
 # This may take 10-20 minutes on OrangePi
 ```
+
+**⚠️ Note on OpenCV for ARM devices:**
+
+If `opencv-python` installation fails or takes too long (>30 minutes), you have two options:
+
+**Option A: Use system OpenCV (Recommended for OrangePi)**
+
+```bash
+# Exit and recreate venv with system site-packages access
+deactivate
+rm -rf venv
+python3 -m venv --system-site-packages venv
+source venv/bin/activate
+
+# Install requirements (will skip system opencv)
+pip install ultralytics numpy pynetworktables dt-apriltags Pillow
+```
+
+**Option B: Install OpenCV headless version**
+
+```bash
+# If Option A doesn't work, try headless version
+pip uninstall opencv-python
+pip install opencv-python-headless
+```
+
+### 4a. Verify OpenCV Installation
+
+**CRITICAL**: Test that cv2 works before proceeding:
+
+```bash
+# Should still be in activated venv
+python3 << 'EOF'
+import cv2
+print(f"✅ OpenCV version: {cv2.__version__}")
+print(f"   Build info: {cv2.getBuildInformation().split()[0]}")
+EOF
+```
+
+Expected output:
+```
+✅ OpenCV version: 4.x.x
+   Build info: ...
+```
+
+If you see `ModuleNotFoundError: No module named 'cv2'`, go back and try Option A or B above.
 
 ### 5. Create Models Directory
 
@@ -1154,6 +1209,51 @@ dmesg | grep -i video
 - Use lighter YOLO model (yolov8n)
 - Increase confidence threshold
 - Check CPU usage with `htop`
+
+### OpenCV Installation Issues
+
+**`ModuleNotFoundError: No module named 'cv2'` in virtual environment**:
+```bash
+cd ~/frc-vision
+source venv/bin/activate
+
+# Test if opencv is available
+python3 -c "import cv2; print(cv2.__version__)"
+
+# If it fails, try using system site-packages:
+deactivate
+rm -rf venv
+python3 -m venv --system-site-packages venv
+source venv/bin/activate
+pip install ultralytics numpy pynetworktables dt-apriltags Pillow
+
+# Test again
+python3 -c "import cv2; print(cv2.__version__)"
+```
+
+**`pip install opencv-python` takes forever or fails on ARM**:
+```bash
+# Option 1: Use system opencv (recommended)
+python3 -m venv --system-site-packages venv
+source venv/bin/activate
+
+# Option 2: Use headless version
+pip install opencv-python-headless
+
+# Option 3: Install prebuilt wheel (if available for your platform)
+pip install opencv-contrib-python
+```
+
+**OpenCV works with system Python but not in venv**:
+```bash
+# Recreate venv with system site-packages
+cd ~/frc-vision
+deactivate
+rm -rf venv
+python3 -m venv --system-site-packages venv
+source venv/bin/activate
+pip install -r requirements.txt
+```
 
 ### NetworkTables Issues
 
