@@ -5,6 +5,7 @@
 #include "subsystems/LEDs.h"
 #include "Constants.h"
 #include <frc/DriverStation.h>
+#include <frc/smartdashboard/SmartDashboard.h>
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>
@@ -35,6 +36,7 @@ void LEDs::Periodic() {
   if (!m_enabled) {
     UpdateDisabledMode();
     m_led.SetData(m_ledBuffer);
+    frc::SmartDashboard::PutString("LED Mode", "Disabled (Manual)");
     return;
   }
 
@@ -49,12 +51,14 @@ void LEDs::Periodic() {
     if (!m_hasBeenEnabled) {
       UpdateDisabledMode();
       m_led.SetData(m_ledBuffer);
+      frc::SmartDashboard::PutString("LED Mode", "Off (Pre-Match)");
       return;
     }
     // After match (has been enabled): Fire effect
     else {
       UpdateFireMode();
       m_led.SetData(m_ledBuffer);
+      frc::SmartDashboard::PutString("LED Mode", "Fire (Post-Match)");
       return;
     }
   }
@@ -63,20 +67,30 @@ void LEDs::Periodic() {
   switch (m_mode) {
     case Mode::kDirectional:
       UpdateDirectionalMode();
+      frc::SmartDashboard::PutString("LED Mode", "Directional");
       break;
     case Mode::kRainbow:
       UpdateRainbowMode();
+      frc::SmartDashboard::PutString("LED Mode", "Rainbow");
       break;
     case Mode::kTeamColors:
       UpdateTeamColorsMode();
+      frc::SmartDashboard::PutString("LED Mode", "Team Colors");
       break;
     case Mode::kFire:
       UpdateFireMode();
+      frc::SmartDashboard::PutString("LED Mode", "Fire");
       break;
     case Mode::kDisabled:
       UpdateDisabledMode();
+      frc::SmartDashboard::PutString("LED Mode", "Disabled");
       break;
   }
+
+  // Publish debug data to SmartDashboard
+  frc::SmartDashboard::PutNumber("LED Heading", m_heading.value());
+  frc::SmartDashboard::PutNumber("LED Speed", m_speed);
+  frc::SmartDashboard::PutBoolean("LED Has Been Enabled", m_hasBeenEnabled);
 
   // Update the LED strip
   m_led.SetData(m_ledBuffer);
