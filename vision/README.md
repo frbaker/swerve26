@@ -77,9 +77,13 @@ This prevents the robot from acting on old/incorrect vision information.
 - **`requirements.txt`** - Python dependencies
 - **`frc-vision.service`** - Systemd service for auto-start
 
+### Training Data Collection
+- **`collect_training_data.py`** - Collect images from camera (recommended!)
+- **`prepare_dataset.py`** - Organize and split dataset for training
+- **`extract_frames.py`** - Extract frames from video footage
+
 ### Helper Scripts
 - **`test_camera.py`** - Test camera and check FPS
-- **`extract_frames.py`** - Extract frames from video for training
 - **`camera_calibration.py`** - Calibrate camera for accurate distance
 
 ### Documentation

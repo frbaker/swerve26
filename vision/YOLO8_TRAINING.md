@@ -1,16 +1,19 @@
 # YOLO8 Training Guide for FRC Game Pieces
 
-Complete guide for training a custom YOLO8 model to detect game pieces for the 2025 FRC season (REEFSCAPE).
+Complete guide for training a custom YOLO8 model to detect game pieces for any FRC season.
 
 ## Overview
 
-YOLO8 (You Only Look Once version 8) is a state-of-the-art object detection model that's fast enough for real-time robotics applications. This guide will help you train a custom model to detect game pieces.
+YOLO8 (You Only Look Once version 8) is a state-of-the-art object detection model that's fast enough for real-time robotics applications. This guide will help you train a custom model to detect whatever game pieces are used in the current season.
 
-## Game Pieces for 2025 REEFSCAPE
+## Training Workflow
 
-Game pieces to detect:
-- **Coral** (orange L-shaped pieces)
-- **Algae** (yellow/green pieces)
+This system is designed to be retrained each season with new game pieces:
+1. **Collect images** directly from OrangePi camera
+2. **Label images** in Roboflow
+3. **Train model** on Google Colab
+4. **Deploy to robot** and test
+5. **Retrain as needed** for different lighting/conditions
 
 ## Prerequisites
 
@@ -26,7 +29,73 @@ Game pieces to detect:
 
 ## Part 1: Collect Training Data
 
-### Option A: Record Video at Events/Practice
+### Option A: Direct Collection from OrangePi (Recommended)
+
+**Best method** - Collect images directly from the robot's camera in real competition conditions!
+
+1. **SSH to OrangePi**:
+   ```bash
+   ssh pi@10.32.67.50
+   cd ~/frc-vision
+   ```
+
+2. **Collect images for each game piece class**:
+   ```bash
+   # Start collection for first game piece
+   python3 collect_training_data.py --class gamepiece1 --lighting indoor
+
+   # Press SPACE to capture images
+   # Move game piece to different positions/angles
+   # Press Q when done
+
+   # Collect for second game piece
+   python3 collect_training_data.py --class gamepiece2 --lighting indoor
+
+   # Collect negative examples (backgrounds without game pieces)
+   python3 collect_training_data.py --class negative --lighting indoor
+   ```
+
+3. **Collect in different lighting conditions**:
+   ```bash
+   # Bright lighting
+   python3 collect_training_data.py --class gamepiece1 --lighting bright
+
+   # Dim lighting
+   python3 collect_training_data.py --class gamepiece1 --lighting dim
+
+   # Outdoor (if applicable)
+   python3 collect_training_data.py --class gamepiece1 --lighting outdoor
+   ```
+
+4. **View collection statistics**:
+   ```bash
+   python3 collect_training_data.py --stats
+   ```
+
+5. **Prepare dataset for training**:
+   ```bash
+   # Organize images into train/val/test splits
+   python3 prepare_dataset.py --input training_data --output dataset
+
+   # This creates dataset.zip for transfer
+   ```
+
+6. **Transfer to your computer**:
+   ```bash
+   # From your computer
+   scp pi@10.32.67.50:~/frc-vision/dataset_*imgs.zip ~/Downloads/
+   ```
+
+**Collection Tips:**
+- Collect 100-200 images per game piece minimum (500+ ideal)
+- Capture at different angles (front, side, top, tilted)
+- Include partial occlusions (pieces half-visible)
+- Vary distances (close, medium, far)
+- Include multiple pieces in same frame
+- Add motion blur (move piece while capturing)
+- Collect negative examples (field without game pieces)
+
+### Option B: Record Video at Events/Practice
 
 1. **Record video footage**:
    ```bash
@@ -47,24 +116,29 @@ Game pieces to detect:
    ffmpeg -i footage.mp4 -vf fps=3 frames/frame_%04d.jpg
    ```
 
-### Option B: Download Existing Datasets
+### Option C: Download Existing Datasets
 
 Check FRC community resources:
 - Chief Delphi forums
 - FRC Discord servers
 - Team websites
-- Past season datasets (adapt/retrain)
+- Current season datasets from other teams
+
+**Note:** Each season has different game pieces, so datasets from previous seasons won't work directly. You'll need to collect new data for each season's unique game pieces.
 
 ### Data Collection Best Practices
 
 Collect **500-1000 images minimum** with:
-- ✅ Various lighting conditions
-- ✅ Different angles and orientations
-- ✅ Partial occlusions (pieces half-visible)
-- ✅ Multiple pieces in frame
-- ✅ Different distances
-- ✅ Motion blur (realistic robot movement)
-- ✅ Different field locations
+- ✅ Various lighting conditions (bright field, dim pit, outdoor)
+- ✅ Different angles and orientations (all sides of game piece)
+- ✅ Partial occlusions (pieces half-visible behind robots/field elements)
+- ✅ Multiple pieces in frame (realistic game scenarios)
+- ✅ Different distances (close-up to far away)
+- ✅ Motion blur (move pieces while capturing for realistic robot movement)
+- ✅ Different field locations (carpet, walls, scoring positions)
+- ✅ Varied backgrounds (with/without robots, people, other game elements)
+
+**Pro Tip:** Use `collect_training_data.py` at practice, competitions, and build sessions to continuously improve your dataset!
 
 ## Part 2: Label Your Dataset
 
@@ -335,7 +409,7 @@ sudo systemctl status frc-vision.service
 ### If Model Has Poor Accuracy
 
 1. **Collect more data** (aim for 1000+ images)
-2. **Balance classes** (equal coral and algae images)
+2. **Balance classes** (equal images for each game piece type)
 3. **Add difficult examples** (partial occlusions, poor lighting)
 4. **Increase training epochs** (try 200)
 5. **Try larger model** (yolov8s instead of yolov8n)
@@ -348,13 +422,99 @@ sudo systemctl status frc-vision.service
 3. **Increase confidence threshold** (0.6 or 0.7)
 4. **Consider ONNX export** for faster inference
 
-### Fine-Tuning After Competition Practice
+### Continuous Improvement Workflow
 
-After testing at real events:
-1. Record footage of missed detections
-2. Add to training dataset
-3. Retrain model
-4. Compare old vs new model performance
+**After each competition/practice:**
+
+1. **Collect missed detections**:
+   ```bash
+   # SSH to OrangePi
+   ssh pi@10.32.67.50
+   cd ~/frc-vision
+
+   # Collect images of cases where detection failed
+   python3 collect_training_data.py --class gamepiece1 --lighting competition
+   ```
+
+2. **Add to dataset and retrain**:
+   ```bash
+   # Prepare updated dataset
+   python3 prepare_dataset.py --input training_data --output dataset_v2
+
+   # Transfer to computer
+   scp dataset_v2_*imgs.zip user@yourcomputer:~/
+
+   # Retrain on Google Colab with new data
+   # Compare v1 vs v2 model performance
+   ```
+
+3. **A/B test models**:
+   ```bash
+   # Keep both models on OrangePi
+   # models/game_piece_v1.pt
+   # models/game_piece_v2.pt
+
+   # Update config.json to switch between them
+   nano config.json
+   # Change "model_path" to test different versions
+   ```
+
+4. **Deploy best model**:
+   ```bash
+   # Copy winning model as primary
+   cp models/game_piece_v2.pt models/game_piece.pt
+   sudo systemctl restart frc-vision.service
+   ```
+
+### Retraining for New Season
+
+**When new game pieces are revealed:**
+
+1. **Clear old data** (optional - or keep for reference):
+   ```bash
+   mv training_data training_data_2025
+   mkdir training_data
+   ```
+
+2. **Collect new game piece data**:
+   ```bash
+   # Collect 500+ images per new game piece
+   python3 collect_training_data.py --class newpiece1
+   python3 collect_training_data.py --class newpiece2
+   python3 collect_training_data.py --class negative
+   ```
+
+3. **Prepare and train**:
+   ```bash
+   python3 prepare_dataset.py
+   # Upload to Roboflow, label, and train
+   ```
+
+4. **Deploy new model**:
+   ```bash
+   scp new_model.pt pi@10.32.67.50:~/frc-vision/models/game_piece.pt
+   ssh pi@10.32.67.50 "sudo systemctl restart frc-vision.service"
+   ```
+
+### Lighting-Specific Models (Advanced)
+
+If one model doesn't work well in all conditions:
+
+1. **Collect separate datasets**:
+   ```bash
+   python3 collect_training_data.py --class gamepiece1 --lighting bright
+   python3 collect_training_data.py --class gamepiece1 --lighting dim
+   ```
+
+2. **Train separate models**:
+   - `game_piece_bright.pt`
+   - `game_piece_dim.pt`
+
+3. **Auto-switch in code** (modify vision_system.py):
+   ```python
+   avg_brightness = frame.mean()
+   model_path = "models/game_piece_bright.pt" if avg_brightness > 100 else "models/game_piece_dim.pt"
+   ```
 
 ## Part 7: Advanced Techniques
 
