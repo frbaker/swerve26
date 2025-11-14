@@ -8,6 +8,7 @@ This vision system replaces PhotonVision with a custom solution that:
 - ✅ Detects game pieces using YOLO8 (coral and algae)
 - ✅ Detects AprilTags for precise positioning
 - ✅ Publishes target data to NetworkTables
+- ✅ Streams camera feed to driver station (Shuffleboard/SmartDashboard)
 - ✅ Works with your PhotonDrive and TractorBeam robot code
 - ✅ Provides stale data detection (0.5s timeout)
 - ✅ Runs autonomously on OrangePi
@@ -87,8 +88,10 @@ This prevents the robot from acting on old/incorrect vision information.
 - **`camera_calibration.py`** - Calibrate camera for accurate distance
 
 ### Documentation
-- **`ORANGEPI_SETUP.md`** - Complete OrangePi setup guide
+- **`COMPLETE_SETUP_GUIDE.md`** - Complete zero-to-operational setup guide
+- **`ORANGEPI_SETUP.md`** - OrangePi hardware and system setup
 - **`YOLO8_TRAINING.md`** - Train custom YOLO8 model for game pieces
+- **`CAMERA_STREAMING.md`** - Stream camera feed to driver station
 - **`README.md`** - This file
 
 ## Quick Start

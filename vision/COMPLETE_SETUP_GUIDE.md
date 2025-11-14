@@ -538,6 +538,38 @@ ls -la
 
 ✅ **Checkpoint**: At this point, you have a working vision system that can detect AprilTags!
 
+### 4. Test Camera Streaming (Optional)
+
+The vision system can stream live camera feed with detection overlays to your driver station.
+
+**View stream in web browser:**
+```bash
+# From your computer (replace with your team number)
+# Format: http://10.TE.AM.50:1181/?action=stream
+
+# For Team 3267:
+http://10.32.67.50:1181/?action=stream
+```
+
+You should see:
+- Live camera feed
+- FPS counter
+- Detection overlays (boxes around targets)
+- Target information
+
+**Note**: Streaming is enabled by default. To disable or adjust quality, edit `config.json`:
+```json
+{
+  "streaming": {
+    "enabled": true,
+    "port": 1181,
+    "quality": 80
+  }
+}
+```
+
+For complete streaming documentation, see `CAMERA_STREAMING.md`.
+
 ---
 
 ## Part 8: Data Collection & Model Training
@@ -978,6 +1010,31 @@ On your driver station computer:
 - `Yaw`, `Distance`, `Area` should show values
 - `FPS` should be 20+
 
+**Add Camera Stream**:
+
+**Using Shuffleboard** (recommended):
+1. Sources → CameraServer → Vision System
+2. Drag to layout
+3. Resize as needed
+4. You should see live camera feed with detection overlays!
+
+**Using SmartDashboard**:
+1. View → Add → Camera Stream
+2. Select "Vision System"
+
+**Using Web Browser**:
+```
+http://10.32.67.50:1181/?action=stream
+```
+
+The stream shows:
+- Live camera feed
+- Bounding boxes around detected targets
+- FPS counter
+- Target information overlays
+
+See `CAMERA_STREAMING.md` for detailed streaming documentation.
+
 ### 5. Test Robot Control
 
 With robot code running:
@@ -1020,6 +1077,7 @@ With robot code running:
 - [ ] YOLO detection works in competition lighting
 - [ ] AprilTag detection works
 - [ ] NetworkTables connects to RoboRIO reliably
+- [ ] Camera stream visible in Shuffleboard/SmartDashboard
 - [ ] FPS is consistently 20+ during testing
 - [ ] Distance measurements are accurate (±2 inches)
 - [ ] No false positives from field elements

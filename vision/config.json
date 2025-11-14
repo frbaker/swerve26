@@ -39,6 +39,13 @@
   },
   "target_priority": "both",
   "comment_priority": "Options: 'yolo', 'apriltag', or 'both'. Use 'both' to detect either type",
+  "streaming": {
+    "enabled": true,
+    "port": 1181,
+    "quality": 80,
+    "comment_port": "Port for MJPEG stream (1181-1190 recommended for FRC)",
+    "comment_quality": "JPEG quality 0-100 (higher = better quality, more bandwidth)"
+  },
   "debug": {
     "show_window": true,
     "comment": "Set to false for headless operation on robot"
