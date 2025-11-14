@@ -1,0 +1,46 @@
+{
+  "robot": {
+    "team_number": 3267,
+    "comment": "Team 3267"
+  },
+  "camera": {
+    "device": 0,
+    "comment_device": "0 for /dev/video0, or use full path like /dev/video0",
+    "width": 640,
+    "height": 480,
+    "fps": 30,
+    "matrix": [
+      [600.0, 0.0, 320.0],
+      [0.0, 600.0, 240.0],
+      [0.0, 0.0, 1.0]
+    ],
+    "comment_matrix": "Camera calibration matrix - run camera_calibration.py to generate your own"
+  },
+  "yolo": {
+    "enabled": true,
+    "model_path": "models/game_piece.pt",
+    "confidence_threshold": 0.5,
+    "comment": "Set enabled to false if you only want AprilTag detection"
+  },
+  "apriltag": {
+    "enabled": true,
+    "family": "tag36h11",
+    "tag_size": 0.1651,
+    "comment_tag_size": "Size of AprilTag in meters (6.5 inches = 0.1651m for FRC tags)",
+    "threads": 4,
+    "quad_decimate": 2.0,
+    "quad_sigma": 0.0,
+    "refine_edges": true,
+    "decode_sharpening": 0.25
+  },
+  "target": {
+    "known_width_meters": 0.3,
+    "comment": "Approximate width of game piece for distance estimation"
+  },
+  "target_priority": "both",
+  "comment_priority": "Options: 'yolo', 'apriltag', or 'both'. Use 'both' to detect either type",
+  "debug": {
+    "show_window": true,
+    "comment": "Set to false for headless operation on robot"
+  }
+}

@@ -67,22 +67,14 @@ namespace DriveConstants {
     constexpr int kFrontRightTurningCanId = 29;
     constexpr int kRearRightTurningCanId = 14;
 
-    //needs to be adjusted per our robot
+    // Vision System Constants (for reference)
+    // NOTE: These are no longer used for distance calculations
+    // The OrangePi custom vision system provides distance directly via NetworkTables
   const units::meter_t CAMERA_HEIGHT = 10.5_in;
-
-// Angle between horizontal and the camera.
   const units::radian_t CAMERA_PITCH = 0_deg;
-
-    //Each target may be at a different height
-  const units::meter_t TARGET_HEIGHT = 12.0625_in; 
-  //const units::meter_t TARGET_HEIGHT = 15.375_in;
-  //bottom of april tag is 8.875_in (reef)
-  //top of april tag is 15.25_in (reef)
-  //center is 12.0625_in (reef)
+  const units::meter_t TARGET_HEIGHT = 12.0625_in;
 
   const bool FIELD_RELATIVE = true;
-
-  constexpr double kElevatorForceDriveToCoDriverHeight = 20; //TODO Need to decide and add height that codriver gets control
 
 }  // namespace DriveConstants
 
@@ -160,52 +152,37 @@ namespace OIConstants {
     constexpr double kDriveDeadband = 0.02;
 }  // namespace OIConstants
 
-namespace CoralCollectorConstants {
-  constexpr int kCoralCollectorLeftCanId = 17;
-  constexpr int kCoralCollectorRightCanId = 13;
-  constexpr double kCoralCollectorSpeed = 0.30; // 0.65
-  constexpr double kCoralCollectorSpeedSlower = 0.1;
-}
+// =============================================================================
+// ADD NEW SEASON-SPECIFIC CONSTANTS BELOW
+// =============================================================================
+//
+// Example structure for new subsystems:
+//
+// namespace MechanismConstants {
+//     constexpr int kMotorCanId = 20;
+//     constexpr double kSpeed = 0.5;
+//     constexpr double kPositionTolerance = 0.1;
+// }  // namespace MechanismConstants
+//
+// =============================================================================
 
-namespace PivotConstants {
- constexpr int kPivotCanid = 22;
- constexpr double kPivotSpeed = 0.3;
- constexpr double kPivotSpeedDown = 0.2; 
- constexpr double kchangespeedpoint = -45.0;
+namespace LEDConstants {
+    // WS2815 LED strip on PWM port
+    constexpr int kPWMPort = 0;
 
- constexpr double kTroughSetPoint = -17; // todo - needs to be measured and set
- constexpr double kLevelTwoThreeSetPoint = -17; // -17
- constexpr double kLevelFourSetPoint = -17; // todo - needs to be measured and set
- constexpr double kPivotTolerance = 0.05; // todo - may need to be adjusted
-}
-namespace ElevatorConstants {
-  constexpr int kElevatorLeftCanId = 10;
+    // LED strip length (300 LEDs for 16.4ft strip)
+    constexpr int kStripLength = 300;
 
-  constexpr int reefTags[12] = {6, 7, 8, 9, 10, 11, 17, 18, 19, 20, 21, 22};
-  constexpr double kElevatorMinHeight = 0;    
-  constexpr double kElevatorMaxHeight = 25;      //todo - needs to be measured and set
-  /*constexpr double kTroughSetPoint = -48;          //todo - needs to be measured and set
-  constexpr double kLevelTwoSetPoint = -102;       //todo - needs to be measured and set
-  constexpr double kLevelThreeSetPoint = -102;     //todo - needs to be measured and set
-  constexpr double kLevelFourSetPoint = -165; 
-  */     //todo - needs to be measured and set
- 
-  constexpr double kTroughSetPoint = 0;        //todo - needs to be measured and set
-  constexpr double kLevelTwoSetPoint = -107;       //todo - needs to be measured and set
-  constexpr double kLevelThreeSetPoint = -155;     //todo - needs to be measured and set
-  constexpr double kLevelFourSetPoint = -166;      //todo - needs to be measured and set
- 
- 
-  constexpr double kPickUpSetPoint = -48;         //todo - needs to be measured and set
-  constexpr double kElevatorTolerance = 0.05;    //todo - may need to be adjusted
-  constexpr double kElevatorToCloseToReef = 100.0; //todo - determine when the area occupied by an april tag means we are TOO close to the reef and raising or lowering the elevator would damage the bot.
-  }
+    // Team colors - Team 3267 Blue and White
+    // Color 1 - Blue
+    constexpr int kTeamColor1_R = 0;
+    constexpr int kTeamColor1_G = 0;
+    constexpr int kTeamColor1_B = 255;
 
-namespace ClimberConstants {
-  constexpr int kClimberMotorCanId = 31;
-}
-
-//17 = right coral collector
-//23 = left coral collector
+    // Color 2 - White
+    constexpr int kTeamColor2_R = 255;
+    constexpr int kTeamColor2_G = 255;
+    constexpr int kTeamColor2_B = 255;
+}  // namespace LEDConstants
 
 

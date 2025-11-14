@@ -17,13 +17,9 @@
 #include <rev/SparkMax.h>
 #include <rev/SparkLowLevel.h>
 #include "Constants.h"
-#include <photon/PhotonCamera.h>
+#include "subsystems/VisionSystem.h"
 #include "subsystems/DriveSubsystem.h"
-#include "subsystems/CoralCollector.h"
-#include "subsystems/Elevator.h"
-#include "subsystems/Pivot.h"
-#include "subsystems/Climber.h"
-#include "subsystems/LEDS.h"
+#include "subsystems/LEDs.h"
 /**
  * This class is where the bulk of the robot should be declared.  Since
  * Command-based is a "declarative" paradigm, very little robot logic should
@@ -38,37 +34,22 @@ class RobotContainer {
   frc2::CommandPtr GetAutonomousCommand();
 
  private:
-  // The driver's controller
+  // Controllers
   frc::XboxController m_driverController{OIConstants::kDriverControllerPort};
   frc::XboxController m_coDriverController{OIConstants::kCoDriverControllerPort};
 
-  frc::DigitalInput m_ElevatorSwitch{0};
-  frc::DigitalInput m_PivotSwitch{1};
-  frc::DigitalInput m_PivotDownSwitch{2};
-                      
-  // The robot's subsystems and commands are defined here...
-
   // The robot's subsystems
   DriveSubsystem m_drive;
-  CoralCollector m_collector;
-  Pivot m_pivot;
-  Elevator m_elevator;
-  Climber m_climber;
-  LEDS m_leds;
+  VisionSystem m_vision;
+  LEDs m_leds;
 
+  // Autonomous chooser
   frc::SendableChooser<frc2::Command*> m_chooser;
 
-  photon::PhotonCamera camera{"boom"};
-  bool isValueInArray(int value, int array[], int size);
-  void DriverControl();
-  void ElevatorControl();
-  void ClimberControl();
-  void coDriverControl();
-  photon::PhotonTrackedTarget hasValidAprilTagTarget();
-  // The chooser for the autonomous routines
-  
-
+  // Helper methods
   void ConfigureButtonBindings();
-  double elevatorOverrideHeight;
+  VisionTarget GetTarget();
+
+  // Drive control state
   bool fieldRelative;
 };

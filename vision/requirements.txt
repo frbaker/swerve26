@@ -1,0 +1,15 @@
+# Computer Vision
+opencv-python>=4.8.0
+numpy>=1.24.0
+
+# YOLO8 for game piece detection
+ultralytics>=8.0.0
+
+# AprilTag detection
+dt-apriltags>=3.3.0
+
+# NetworkTables for FRC communication
+pynetworktables>=2021.0.0
+
+# Utilities
+Pillow>=10.0.0

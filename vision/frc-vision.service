@@ -1,0 +1,22 @@
+[Unit]
+Description=FRC Vision System - Team 3267
+After=network.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/frc-vision
+Environment="PATH=/home/pi/frc-vision/venv/bin"
+ExecStart=/home/pi/frc-vision/venv/bin/python3 /home/pi/frc-vision/vision_system.py --config /home/pi/frc-vision/config.json
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+# Performance settings
+Nice=-10
+IOSchedulingClass=realtime
+IOSchedulingPriority=0
+
+[Install]
+WantedBy=multi-user.target
