@@ -4,29 +4,17 @@
 
 #include "RobotContainer.h"
 
-
 #include <frc/controller/PIDController.h>
 #include <frc/geometry/Translation2d.h>
 #include <frc/smartdashboard/SmartDashboard.h>
-#include <frc/trajectory/Trajectory.h>
-#include <frc/trajectory/TrajectoryGenerator.h>
 #include <frc2/command/InstantCommand.h>
-#include <frc2/command/SequentialCommandGroup.h>
-#include <frc2/command/SwerveControllerCommand.h>
+#include <frc2/command/RunCommand.h>
 #include <frc2/command/button/JoystickButton.h>
 #include <units/angle.h>
 #include <units/velocity.h>
-#include <units/time.h>
-
-
-#include <utility>
 
 #include "Constants.h"
 #include "subsystems/DriveSubsystem.h"
-#include "subsystems/Elevator.h"
-#include "subsystems/CoralCollector.h"
-
-#include <frc/DriverStation.h>
 
 #include <pathplanner/lib/commands/PathPlannerAuto.h>
 #include <pathplanner/lib/auto/NamedCommands.h>
@@ -34,117 +22,19 @@
 using namespace pathplanner;
 using namespace DriveConstants;
 
-RobotContainer::RobotContainer() {
-    NamedCommands::registerCommand("Setpoint3", m_elevator.SetPointCmd(2));
-    NamedCommands::registerCommand("lowerPivot", m_pivot.ReversePivotAuto());
-    NamedCommands::registerCommand("stopPivot", m_pivot.StopAuto());
-    NamedCommands::registerCommand("reverseCoralCollector", m_collector.ReverseCoralCollectorAuto());
-    /*NamedCommands::registerCommand("stopCollector", m_collector.StopAuto());
-    NamedCommands::registerCommand("reverseCollector", m_collector.ReverseCoralCollectorAuto());
-    NamedCommands::registerCommand("raisePivot", m_pivot.RunPivotAuto());
-    NamedCommands::registerCommand("lowerPivot", m_pivot.ReversePivotAuto());
-    NamedCommands::registerCommand("stopPivot", m_pivot.StopAuto());*/
-    //NamedCommands::registerCommand("autoScore", std::move(m_drive.PhotonDrive2()));
-    //NamedCommands::registerCommand("autoScore", std::move(PhotonDrive2Command(&m_drive)));
+RobotContainer::RobotContainer() : fieldRelative(FIELD_RELATIVE) {
+  // Register any named commands for PathPlanner
+  // Example:
+  // NamedCommands::registerCommand("exampleCommand", m_subsystem.ExampleCommand());
 
-    //initial values set in constants.h 
-    elevatorOverrideHeight = kElevatorForceDriveToCoDriverHeight;
-    fieldRelative = FIELD_RELATIVE;
   // Configure the button bindings
   ConfigureButtonBindings();
 
   // Set up default drive command
   // The left stick controls translation of the robot.
   // Turning is controlled by the X axis of the right stick.
-    m_drive.SetDefaultCommand(frc2::RunCommand(
-        [this] {
-        DriverControl();
-        },
-        {&m_drive}));
-
-    m_elevator.SetDefaultCommand(frc2::RunCommand(
-        [this]{
-            ElevatorControl();
-        },
-        {&m_elevator}));
-
-    m_climber.SetDefaultCommand(frc2::RunCommand(
-        [this]{
-            ClimberControl();
-        },
-        {&m_climber}));
-}
-
-void RobotContainer::ElevatorControl() {
-    /*units::unit_t<double> joyValue{m_coDriverController.GetRightY()};
-    units::unit_t<double> ramping = elevatorRamp.Calculate(joyValue);
-    m_elevator.JoyControl(frc::ApplyDeadband(ramping.value(), OIConstants::kDriveDeadband / 2));*/
-    m_elevator.JoyControl(frc::ApplyDeadband(m_coDriverController.GetRightY(), OIConstants::kDriveDeadband));
-    if(!m_ElevatorSwitch.Get()){ //False when pushed down 
-        m_elevator.ResetEncoder();
-    } //A
-    if(!m_PivotSwitch.Get()){ //False when pushed down //A
-        m_pivot.ResetEncoder(); //A
-    } //A
-    if(!m_PivotDownSwitch.Get()){
-        m_pivot.ResetEncoderDown();
-    }
-    if(m_coDriverController.GetPOV() == 0){ //A
-        m_elevator.SetPoint(3); //A
-        frc::SmartDashboard::PutString("Level", "Level 4"); //A
-    }
-    if(m_coDriverController.GetPOV() == 90){ //A
-        m_elevator.SetPoint(2); //A
-        frc::SmartDashboard::PutString("Level", "Level 3"); //A
-    }
-    if(m_coDriverController.GetPOV() == 270){ //A
-        m_elevator.SetPoint(1); //A 
-        frc::SmartDashboard::PutString("Level", "Level 2"); //A
-    } //A
-    if(m_coDriverController.GetPOV() == 180){ //A
-        m_elevator.SetPoint(0); //A
-        frc::SmartDashboard::PutString("Level", "Trough"); //A
-    } //A
-}
-
-void RobotContainer::ClimberControl(){ //A
-    m_climber.RunClimber(frc::ApplyDeadband((-m_driverController.GetRightTriggerAxis()/3) * (m_climber.EncoderValue() > -50), OIConstants::kDriveDeadband)); //A
-    if(m_driverController.GetAButtonPressed()){ //A
-        fieldRelative = m_climber.MovePigeon(); //A
-    } //A
-
-   if(m_coDriverController.GetXButtonPressed()){ //A
-        m_leds.TurnOnLED(m_coDriverController.GetXButtonPressed()); //A
-    } //A
-
-} //A
-
-
-
-void RobotContainer::DriverControl() { 
-        //when the elevator is up, the drive control is passed to the co-driver for small adjustments to line up to score
-        if (m_elevator.CurrentPosition() > elevatorOverrideHeight) {
-            //situations change rapidly - allow the driver to override and take back control if needed
-            if (m_driverController.GetPOV()==0) {
-                elevatorOverrideHeight = std::numeric_limits<double>::max(); //will give control back to driver
-                 m_drive.Drive(
-            -units::meters_per_second_t{frc::ApplyDeadband(
-                m_driverController.GetLeftY(), OIConstants::kDriveDeadband)},
-            -units::meters_per_second_t{frc::ApplyDeadband(
-                m_driverController.GetLeftX(), OIConstants::kDriveDeadband)},
-            -units::radians_per_second_t{frc::ApplyDeadband(
-                m_driverController.GetRightX(), OIConstants::kDriveDeadband)},
-                    fieldRelative, true
-                );
-            } 
-            else if (m_driverController.GetPOV()==180) {
-                elevatorOverrideHeight = kElevatorForceDriveToCoDriverHeight;
-            } 
-            else {
-                coDriverControl();
-             }
-        }
-        else {
+  m_drive.SetDefaultCommand(frc2::RunCommand(
+      [this] {
         m_drive.Drive(
             -units::meters_per_second_t{frc::ApplyDeadband(
                 m_driverController.GetLeftY(), OIConstants::kDriveDeadband)},
@@ -153,235 +43,143 @@ void RobotContainer::DriverControl() {
             -units::radians_per_second_t{frc::ApplyDeadband(
                 m_driverController.GetRightX(), OIConstants::kDriveDeadband)},
             fieldRelative, true);
-        
-        }
-}
-void RobotContainer::coDriverControl() {
-    m_drive.Drive(
-            //TODO - this whole section needs to be coded
-            //ideally the left and right triggers will tractor beam us into actual scoring position AFTER elevator up
-            //after elevator is raised up -- do we need safety in place to avoid raising when too close?
-            //if no april tag is seen, use joystick to move forward and triggers to strafe?
-            -units::meters_per_second_t{(m_coDriverController.GetLeftY())/10},
-            -units::meters_per_second_t{(m_coDriverController.GetLeftTriggerAxis())/10 + (m_coDriverController.GetRightTriggerAxis())/10},
-            -units::radians_per_second_t{0.0}, //shouldn't be needed - but see if we can allow rotation control?
-            fieldRelative, true);
+      },
+      {&m_drive}));
 }
 
 VisionTarget RobotContainer::GetTarget() {
-    // Simply return the current target from the vision system
-    // No filtering needed - the OrangePi vision system will handle target selection
-    return m_vision.GetTarget();
-}
-
-
-bool RobotContainer::isValueInArray(int value, int array[], int size) {
-    for (int i = 0; i < size; ++i) {
-        if (array[i] == value) {
-            return true;
-        }
-    }
-    return false;
+  // Simply return the current target from the vision system
+  // No filtering needed - the OrangePi vision system will handle target selection
+  return m_vision.GetTarget();
 }
 
 void RobotContainer::ConfigureButtonBindings() {
-    //Zero Heading
-    frc2::JoystickButton(&m_driverController, frc::XboxController::Button::kX).WhileTrue(new frc2::RunCommand([this] {
-        m_drive.ZeroHeading();
-    }, {&m_drive}));
+  // ==========================================================================
+  // DRIVER CONTROLLER BINDINGS
+  // ==========================================================================
 
-    frc2::JoystickButton(&m_driverController, frc::XboxController::Button::kBack).WhileTrue(new frc2::RunCommand([this] {
-        fieldRelative = false;
-    }, {&m_drive}));
+  // Zero Heading - X button
+  frc2::JoystickButton(&m_driverController, frc::XboxController::Button::kX)
+      .WhileTrue(new frc2::RunCommand([this] { m_drive.ZeroHeading(); }, {&m_drive}));
 
-    frc2::JoystickButton(&m_driverController, frc::XboxController::Button::kStart).WhileTrue(new frc2::RunCommand([this] {
-        fieldRelative = true;
-    }, {&m_drive}));
+  // Field Relative Toggle
+  frc2::JoystickButton(&m_driverController, frc::XboxController::Button::kBack)
+      .WhileTrue(new frc2::RunCommand([this] { fieldRelative = false; }, {&m_drive}));
 
-    //Vision-Assisted Rotation - Left Bumper
-    //Robot auto-rotates to face target with PID, driver controls forward/backward movement
-    frc2::JoystickButton(&m_driverController, frc::XboxController::Button::kLeftBumper).WhileTrue(new frc2::RunCommand([this] {
-        VisionTarget target = GetTarget();
-        if (target.hasTarget && target.isDataFresh) {
-            frc::SmartDashboard::PutNumber("targetYaw", target.yaw);
-            frc::SmartDashboard::PutBoolean("visionActive", true);
-            // Driver controls movement, robot auto-rotates to face target
-            m_drive.PhotonDrive(
-                -units::meters_per_second_t{frc::ApplyDeadband(m_driverController.GetLeftY(), OIConstants::kDriveDeadband)},
-                -units::meters_per_second_t{frc::ApplyDeadband(m_driverController.GetLeftX(), OIConstants::kDriveDeadband)},
-                units::degree_t(target.yaw));
-        }
-        else {
-            frc::SmartDashboard::PutBoolean("visionActive", false);
-            DriverControl();
-        }
-    }, {&m_drive}));
+  frc2::JoystickButton(&m_driverController, frc::XboxController::Button::kStart)
+      .WhileTrue(new frc2::RunCommand([this] { fieldRelative = true; }, {&m_drive}));
 
-    //Full Auto-Drive - Right Bumper
-    //Robot auto-rotates AND auto-drives to target with PID control
-    frc2::JoystickButton(&m_driverController, frc::XboxController::Button::kRightBumper).WhileTrue(new frc2::RunCommand([this] {
-        elevatorOverrideHeight = kElevatorForceDriveToCoDriverHeight;
-        VisionTarget target = GetTarget();
-        if (target.hasTarget && target.isDataFresh) {
-            frc::SmartDashboard::PutNumber("targetArea", target.area);
-            frc::SmartDashboard::PutNumber("targetDistance", target.distance);
-            frc::SmartDashboard::PutNumber("targetYaw", target.yaw);
-            frc::SmartDashboard::PutBoolean("visionActive", true);
-            // Robot auto-rotates and auto-drives to target
-            units::meter_t distance{target.distance};
-            m_drive.TractorBeam(distance, false, units::degree_t(target.yaw), target.area);
-        }
-        else {
-            frc::SmartDashboard::PutBoolean("visionActive", false);
-            DriverControl();
-        }
-    }, {&m_drive}));
-
-    //Vision-assisted Drive - B Button (same as left bumper)
-    //Driver controls driving, robot rotates to face target
-    frc2::JoystickButton(&m_driverController, frc::XboxController::Button::kB).WhileTrue(new frc2::RunCommand([this] {
-        VisionTarget target = GetTarget();
-        if (target.hasTarget && target.isDataFresh) {
-            frc::SmartDashboard::PutBoolean("visionActive", true);
-            m_drive.PhotonDrive(
-                //driver controls direction of travel, rotation faces target
-                -units::meters_per_second_t{frc::ApplyDeadband(m_driverController.GetLeftY(), OIConstants::kDriveDeadband)},
-                -units::meters_per_second_t{frc::ApplyDeadband(m_driverController.GetLeftX(), OIConstants::kDriveDeadband)},
-                units::degree_t(target.yaw));
-        }
-        else {
-            frc::SmartDashboard::PutBoolean("visionActive", false);
-            DriverControl();
-        }
-      }, {&m_drive}));
-
-
-    /*frc2::JoystickButton(&m_coDriverController, frc::XboxController::Button::kX).WhileTrue(new frc2::RunCommand([this] {
-        //it's possible that we are too close to safely raise the elevator
-        //if a target is present with fresh data - to avoid damaging the robot we run only if it is safe.
-        VisionTarget target = GetTarget();
-        if (target.hasTarget && target.isDataFresh) {
-            if (target.area < ElevatorConstants::kElevatorToCloseToReef){
-                m_elevator.SetpointMovement();
+  // Vision-Assisted Rotation - Left Bumper
+  // Robot auto-rotates to face target with PID, driver controls forward/backward movement
+  frc2::JoystickButton(&m_driverController, frc::XboxController::Button::kLeftBumper)
+      .WhileTrue(new frc2::RunCommand(
+          [this] {
+            VisionTarget target = GetTarget();
+            if (target.hasTarget && target.isDataFresh) {
+              frc::SmartDashboard::PutNumber("targetYaw", target.yaw);
+              frc::SmartDashboard::PutBoolean("visionActive", true);
+              // Driver controls movement, robot auto-rotates to face target
+              m_drive.PhotonDrive(
+                  -units::meters_per_second_t{frc::ApplyDeadband(
+                      m_driverController.GetLeftY(), OIConstants::kDriveDeadband)},
+                  -units::meters_per_second_t{frc::ApplyDeadband(
+                      m_driverController.GetLeftX(), OIConstants::kDriveDeadband)},
+                  units::degree_t(target.yaw));
+            } else {
+              frc::SmartDashboard::PutBoolean("visionActive", false);
+              // Fallback to normal driver control
+              m_drive.Drive(
+                  -units::meters_per_second_t{frc::ApplyDeadband(
+                      m_driverController.GetLeftY(), OIConstants::kDriveDeadband)},
+                  -units::meters_per_second_t{frc::ApplyDeadband(
+                      m_driverController.GetLeftX(), OIConstants::kDriveDeadband)},
+                  -units::radians_per_second_t{frc::ApplyDeadband(
+                      m_driverController.GetRightX(), OIConstants::kDriveDeadband)},
+                  fieldRelative, true);
             }
-        }
-        else{
-            m_elevator.SetpointMovement();
-           // m_pivot.SetpointMovement();
-        }
-    }, {&m_elevator}));*/
+          },
+          {&m_drive}));
 
-    /*frc2::JoystickButton(&m_coDriverController, frc::XboxController::Button::kA).WhileTrue(new frc2::RunCommand([this] {
-         //it's possible that we are too close to safely lower the elevator
-        //if a target is present with fresh data - to avoid damaging the robot we run only if it is safe.
-        VisionTarget target = GetTarget();
-        if (target.hasTarget && target.isDataFresh) {
-            if (target.area < ElevatorConstants::kElevatorToCloseToReef){
-                m_elevator.SetpointMovement();
+  // Full Auto-Drive - Right Bumper
+  // Robot auto-rotates AND auto-drives to target with PID control
+  frc2::JoystickButton(&m_driverController, frc::XboxController::Button::kRightBumper)
+      .WhileTrue(new frc2::RunCommand(
+          [this] {
+            VisionTarget target = GetTarget();
+            if (target.hasTarget && target.isDataFresh) {
+              frc::SmartDashboard::PutNumber("targetArea", target.area);
+              frc::SmartDashboard::PutNumber("targetDistance", target.distance);
+              frc::SmartDashboard::PutNumber("targetYaw", target.yaw);
+              frc::SmartDashboard::PutBoolean("visionActive", true);
+              // Robot auto-rotates and auto-drives to target
+              units::meter_t distance{target.distance};
+              m_drive.TractorBeam(distance, false, units::degree_t(target.yaw), target.area);
+            } else {
+              frc::SmartDashboard::PutBoolean("visionActive", false);
+              // Fallback to normal driver control
+              m_drive.Drive(
+                  -units::meters_per_second_t{frc::ApplyDeadband(
+                      m_driverController.GetLeftY(), OIConstants::kDriveDeadband)},
+                  -units::meters_per_second_t{frc::ApplyDeadband(
+                      m_driverController.GetLeftX(), OIConstants::kDriveDeadband)},
+                  -units::radians_per_second_t{frc::ApplyDeadband(
+                      m_driverController.GetRightX(), OIConstants::kDriveDeadband)},
+                  fieldRelative, true);
             }
-        }
-        else{
-            m_elevator.SetpointMovement();
-        }
-    }, {&m_elevator}));*/
+          },
+          {&m_drive}));
 
-    //TODO -- implement RunCoralCollector, and ReverseCoralCollector from the coralCollector class
+  // Vision-assisted Drive - B Button (same as left bumper)
+  // Driver controls driving, robot rotates to face target
+  frc2::JoystickButton(&m_driverController, frc::XboxController::Button::kB)
+      .WhileTrue(new frc2::RunCommand(
+          [this] {
+            VisionTarget target = GetTarget();
+            if (target.hasTarget && target.isDataFresh) {
+              frc::SmartDashboard::PutBoolean("visionActive", true);
+              m_drive.PhotonDrive(
+                  // driver controls direction of travel, rotation faces target
+                  -units::meters_per_second_t{frc::ApplyDeadband(
+                      m_driverController.GetLeftY(), OIConstants::kDriveDeadband)},
+                  -units::meters_per_second_t{frc::ApplyDeadband(
+                      m_driverController.GetLeftX(), OIConstants::kDriveDeadband)},
+                  units::degree_t(target.yaw));
+            } else {
+              frc::SmartDashboard::PutBoolean("visionActive", false);
+              // Fallback to normal driver control
+              m_drive.Drive(
+                  -units::meters_per_second_t{frc::ApplyDeadband(
+                      m_driverController.GetLeftY(), OIConstants::kDriveDeadband)},
+                  -units::meters_per_second_t{frc::ApplyDeadband(
+                      m_driverController.GetLeftX(), OIConstants::kDriveDeadband)},
+                  -units::radians_per_second_t{frc::ApplyDeadband(
+                      m_driverController.GetRightX(), OIConstants::kDriveDeadband)},
+                  fieldRelative, true);
+            }
+          },
+          {&m_drive}));
 
-    frc2::JoystickButton(&m_coDriverController, frc::XboxController::Button::kRightBumper).WhileTrue(new frc2::RunCommand([this] {
-        if(m_pivot.CurrentPosition() > PivotConstants::kchangespeedpoint){
-            m_collector.RunCoralCollectorSlower();
-        }
-        else {
-            m_collector.RunCoralCollector();
+  // ==========================================================================
+  // CO-DRIVER CONTROLLER BINDINGS
+  // ==========================================================================
 
-        }
-        
-    }, {&m_collector})).OnFalse(new frc2::InstantCommand([this] {
-        m_collector.Stop();
-    }, {&m_collector})); //should turn it off when false
-
-    frc2::JoystickButton(&m_coDriverController, frc::XboxController::Button::kLeftBumper).WhileTrue(new frc2::RunCommand([this] {
-        if(m_pivot.CurrentPosition() > PivotConstants::kchangespeedpoint){
-            m_collector.ReverseCoralCollectorSlower();
-        }
-        else{
-            m_collector.ReverseCoralCollector();
-        }
-    }, {&m_collector})).OnFalse(new frc2::InstantCommand([this] {
-        m_collector.Stop();
-    }, {&m_collector})); //should turn it off when false
-
-    frc2::JoystickButton(&m_coDriverController, frc::XboxController::Button::kY).WhileTrue(new frc2::RunCommand([this] {
-        m_pivot.RunPivot();
-    }, {&m_pivot})).OnFalse(new frc2::InstantCommand([this] {
-        m_pivot.Stop();
-    }, {&m_pivot}));;  // should turn it off when false
-
-    frc2::JoystickButton(&m_coDriverController, frc::XboxController::Button::kB).WhileTrue(new frc2::RunCommand([this] {
-        m_pivot.ReversePivot();
-    }, {&m_pivot})).OnFalse(new frc2::InstantCommand([this] {
-        m_pivot.Stop();
-    }, {&m_pivot})); //should turn it off when false
-
-    
-
-
-
+  // Add co-driver bindings for new season mechanisms here
+  // Example button bindings:
+  //
+  // frc2::JoystickButton(&m_coDriverController, frc::XboxController::Button::kA)
+  //     .WhileTrue(new frc2::RunCommand([this] { m_mechanism.DoAction(); }, {&m_mechanism}));
+  //
+  // frc2::JoystickButton(&m_coDriverController, frc::XboxController::Button::kB)
+  //     .OnTrue(new frc2::InstantCommand([this] { m_mechanism.Toggle(); }, {&m_mechanism}));
+  //
+  // POV control example:
+  // if (m_coDriverController.GetPOV() == 0) {  // Up on D-pad
+  //     m_mechanism.SetPosition(1);
+  // }
 }
 
 frc2::CommandPtr RobotContainer::GetAutonomousCommand() {
-    return PathPlannerAuto("From Right Wall").ToPtr();
-  /*// Set up config for trajectory
-  frc::TrajectoryConfig config(AutoConstants::kMaxSpeed,
-                               AutoConstants::kMaxAcceleration);
-  // Add kinematics to ensure max speed is actually obeyed
-  config.SetKinematics(m_drive.kDriveKinematics);
-
-  // An example trajectory to follow.  All units in meters.
-  auto exampleTrajectory = frc::TrajectoryGenerator::GenerateTrajectory(
-      // Start at the origin facing the +X direction
-      frc::Pose2d{0_m, 0_m, 0_deg},
-        // positive 2nd number = left, negative = right
-        // Pass through these two interior waypoints, making an 's' curve path
-
-      {
-        frc::Translation2d{1_m, 0_m},
-       frc::Translation2d{2_m, 0_m},},
-       
-      // End 3 meters straight ahead of where we started, facing forward
-      frc::Pose2d{2_m, 0_m, 90_deg},
-      // Pass the config
-      config);
-
-  frc::ProfiledPIDController<units::radians> thetaController{
-      AutoConstants::kPThetaController, 0, 0,
-      AutoConstants::kThetaControllerConstraints};
-
-  thetaController.EnableContinuousInput(units::radian_t{-std::numbers::pi},
-                                        units::radian_t{std::numbers::pi});
-
-  frc2::SwerveControllerCommand<4> swerveControllerCommand(
-      exampleTrajectory, [this]() { return m_drive.GetPose(); },
-
-      m_drive.kDriveKinematics,
-
-      frc::PIDController{AutoConstants::kPXController, 0, 0},
-      frc::PIDController{AutoConstants::kPYController, 0, 0}, thetaController,
-
-      [this](auto moduleStates) { m_drive.SetModuleStates(moduleStates); },
-
-      {&m_drive});
-
-  // Reset odometry to the starting pose of the trajectory.
-  m_drive.ResetOdometry(exampleTrajectory.InitialPose());
-
-  // no auto
-  return new frc2::SequentialCommandGroup(
-      std::move(swerveControllerCommand),
-      frc2::InstantCommand([this]() { m_drive.Drive(0_mps, 0_mps, 0_rad_per_s, false, false); },{}),
-      frc2::RunCommand([this] { 
-        m_arm.RunArm(); 
-    }, {&m_arm})/
-        
-  );
-*/}
+  // Return autonomous command
+  // Update with actual auto routine name when configured in PathPlanner
+  return PathPlannerAuto("ExampleAuto").ToPtr();
+}
