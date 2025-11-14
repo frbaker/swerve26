@@ -32,8 +32,7 @@ bool VisionSystem::HasTarget() {
 
 bool VisionSystem::IsDataFresh(double maxAge) {
   // Get the timestamp of the last update to the HasTarget entry
-  auto entry = m_hasTargetEntry->GetEntry();
-  uint64_t lastChange = entry.GetLastChange();
+  uint64_t lastChange = m_hasTargetEntry.GetLastChange();
 
   // Get current time in microseconds
   uint64_t currentTime = nt::Now();

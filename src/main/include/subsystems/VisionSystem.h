@@ -60,5 +60,5 @@ class VisionSystem {
 
  private:
   std::shared_ptr<nt::NetworkTable> m_visionTable;
-  std::shared_ptr<nt::NetworkTableEntry> m_hasTargetEntry;
+  nt::NetworkTableEntry m_hasTargetEntry;
 };
