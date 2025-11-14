@@ -6,6 +6,7 @@
 #include "Constants.h"
 #include <algorithm>
 #include <cmath>
+#include <cstdlib>
 
 LEDs::LEDs() : m_led(LEDConstants::kPWMPort) {
   // Set LED strip length
@@ -14,6 +15,11 @@ LEDs::LEDs() : m_led(LEDConstants::kPWMPort) {
   // Initialize buffer to off
   for (auto& led : m_ledBuffer) {
     led.SetRGB(0, 0, 0);
+  }
+
+  // Initialize heat map to zero
+  for (auto& heat : m_heat) {
+    heat = 0;
   }
 
   // Set data
@@ -38,6 +44,9 @@ void LEDs::Periodic() {
       break;
     case Mode::kTeamColors:
       UpdateTeamColorsMode();
+      break;
+    case Mode::kFire:
+      UpdateFireMode();
       break;
     case Mode::kDisabled:
       UpdateDisabledMode();
@@ -134,6 +143,39 @@ void LEDs::UpdateTeamColorsMode() {
   }
 }
 
+void LEDs::UpdateFireMode() {
+  // Fire effect inspired by FastLED's Fire2012
+  // Perfect for edge-lighting - looks like flames rising!
+
+  int numLEDs = m_ledBuffer.size();
+
+  // Step 1: Cool down every LED slightly
+  for (int i = 0; i < numLEDs; i++) {
+    // Cooling rate: Higher = faster cooling (dimmer fire)
+    // Random cooling between 0-20 creates flickering effect
+    int cooling = std::rand() % 20;
+    int cooldown = (cooling > m_heat[i]) ? 0 : (m_heat[i] - cooling);
+    m_heat[i] = cooldown;
+  }
+
+  // Step 2: Heat diffuses upward (heat rises like real fire)
+  for (int k = numLEDs - 1; k >= 2; k--) {
+    m_heat[k] = (m_heat[k - 1] + m_heat[k - 2] + m_heat[k - 2]) / 3;
+  }
+
+  // Step 3: Randomly ignite new "sparks" at the bottom
+  // Sparking rate: Higher = more frequent sparks (more intense fire)
+  if (std::rand() % 100 < 80) {  // 80% chance of spark
+    int sparkPos = std::rand() % 7;  // Sparks in bottom 7 LEDs
+    m_heat[sparkPos] = std::min(255, m_heat[sparkPos] + std::rand() % (255 - 160) + 160);
+  }
+
+  // Step 4: Convert heat to LED colors
+  for (int j = 0; j < numLEDs; j++) {
+    m_ledBuffer[j] = HeatToColor(m_heat[j]);
+  }
+}
+
 void LEDs::UpdateDisabledMode() {
   // Turn off all LEDs
   for (auto& led : m_ledBuffer) {
@@ -210,4 +252,33 @@ int LEDs::GetSpeedBrightness() {
                    static_cast<int>(m_speed * (kMaxBrightness - kMinBrightness));
 
   return std::clamp(brightness, kMinBrightness, kMaxBrightness);
+}
+
+frc::AddressableLED::LEDData LEDs::HeatToColor(uint8_t heat) {
+  // Convert heat value to fire color palette
+  // Heat scale: 0 (black) → 255 (white hot)
+  // Color progression: Black → Red → Orange → Yellow → White
+
+  frc::AddressableLED::LEDData color;
+
+  // Cool colors (0-85): Black → Dark Red → Red
+  if (heat < 85) {
+    int red = heat * 3;  // 0 → 255
+    color.SetRGB(red, 0, 0);
+  }
+  // Medium heat (85-170): Red → Orange → Yellow
+  else if (heat < 170) {
+    int red = 255;
+    int green = (heat - 85) * 3;  // 0 → 255
+    color.SetRGB(red, green, 0);
+  }
+  // Hot (170-255): Yellow → White
+  else {
+    int red = 255;
+    int green = 255;
+    int blue = (heat - 170) * 3;  // 0 → 255
+    color.SetRGB(red, green, blue);
+  }
+
+  return color;
 }

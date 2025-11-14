@@ -60,6 +60,7 @@ class LEDs : public frc2::SubsystemBase {
     kDirectional,      // Color based on heading, intensity on speed
     kRainbow,          // Rainbow chase pattern
     kTeamColors,       // Solid team colors
+    kFire,             // Fire/flame effect (great for edge-lighting!)
     kDisabled          // LEDs off
   };
 
@@ -79,10 +80,14 @@ class LEDs : public frc2::SubsystemBase {
   int m_rainbowFirstPixelHue{0};
   int m_chaseOffset{0};
 
+  // Fire effect heat map (one heat value per LED)
+  std::array<uint8_t, 300> m_heat;
+
   // Helper functions
   void UpdateDirectionalMode();
   void UpdateRainbowMode();
   void UpdateTeamColorsMode();
+  void UpdateFireMode();
   void UpdateDisabledMode();
 
   /**
@@ -104,4 +109,11 @@ class LEDs : public frc2::SubsystemBase {
    * @return Value (0-255) based on speed
    */
   int GetSpeedBrightness();
+
+  /**
+   * Convert heat value to fire color
+   * @param heat Heat value (0-255)
+   * @return LED color (black → red → orange → yellow → white)
+   */
+  frc::AddressableLED::LEDData HeatToColor(uint8_t heat);
 };
