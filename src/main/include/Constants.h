@@ -173,11 +173,11 @@ namespace LEDConstants {
     // LED strip length (300 LEDs for 16.4ft strip)
     constexpr int kStripLength = 300;
 
-    // Team colors (customize for your team)
-    // Color 1 - Red
-    constexpr int kTeamColor1_R = 255;
+    // Team colors - Team 3267 Blue and White
+    // Color 1 - Blue
+    constexpr int kTeamColor1_R = 0;
     constexpr int kTeamColor1_G = 0;
-    constexpr int kTeamColor1_B = 0;
+    constexpr int kTeamColor1_B = 255;
 
     // Color 2 - White
     constexpr int kTeamColor2_R = 255;
