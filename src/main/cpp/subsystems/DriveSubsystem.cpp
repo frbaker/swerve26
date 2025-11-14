@@ -41,11 +41,17 @@ DriveSubsystem::DriveSubsystem()
       m_odometry{kDriveKinematics,
                  frc::Rotation2d(units::radian_t{m_gyro.GetYaw().GetValue()}),
                  {m_frontLeft.GetPosition(), m_frontRight.GetPosition(),
-                  m_rearLeft.GetPosition(), m_rearRight.GetPosition()}, 
+                  m_rearLeft.GetPosition(), m_rearRight.GetPosition()},
                  frc::Pose2d{}},
-                 m_alignPIDController(1.0, 0.0, 0.0), // Example values for Kp, Ki, Kd
-                 m_distancePIDController(1.0, 0.0, 0.0) 
+                 m_alignPIDController(kAlignP, kAlignI, kAlignD),
+                 m_distancePIDController(kDistanceP, kDistanceI, kDistanceD)
                  {
+  // Configure PID controllers for optimal performance
+  m_alignPIDController.SetTolerance(kAlignTolerance);
+  m_alignPIDController.EnableContinuousInput(-180.0, 180.0);  // Wraps angles
+
+  m_distancePIDController.SetTolerance(kDistanceTolerance);
+
 
                   // Configure the AutoBuilder last
                  RobotConfig config = RobotConfig::fromGUISettings();
@@ -186,58 +192,82 @@ void DriveSubsystem::SetX() {
   frc::SmartDashboard::PutString("Running", "SetX");
 }
 
-void DriveSubsystem::TractorBeam(units::meter_t forward, bool left, units::degree_t yaw, double targetArea){
-  //Calculate how far forward to drive
-  double howFarDouble = forward.value();
-  double forwardPid = m_distancePIDController.Calculate(howFarDouble, 0.0); //adjust the second param to stop sooner or later
-  //units::meters_per_second_t howFar{forwardPid/60}; //adjust the division to speed up or slow down after seeing robot behavior
-  units::meters_per_second_t howFar{0.3_mps}; //adjust the division to speed up or slow down after seeing robot behavior
+void DriveSubsystem::TractorBeam(units::meter_t distance, bool left, units::degree_t yaw, double targetArea){
+  // Optimized TractorBeam with proper PID control for fast, accurate approach without overshooting
 
-  //Calculate strafe and the offset (6 inches either side of center of the april tag?)
-  const units::meter_t DESIRED_OFFSET = 0.0_m; // 6 inches (0.1524 meters) to the left or right of the april tag (adjust after seeing robot behavior)
-  units::radian_t desiredStrafeAngle = units::radian_t(atan2(DESIRED_OFFSET.value(), forward.value())); //right side of reef
-  if (left) {
-    units::radian_t desiredStrafeAngle = units::radian_t(atan2(-DESIRED_OFFSET.value(), forward.value())); //left side of reef
+  // Calculate forward speed using PID on distance
+  // PID calculates how fast to approach based on current distance
+  double distanceError = distance.value();
+  double forwardPidOutput = m_distancePIDController.Calculate(distanceError, 0.0);
+
+  // Clamp output to safe velocity range
+  // Far away: move fast (up to kMaxApproachSpeed)
+  // Close: slow down (minimum kMinApproachSpeed)
+  double forwardSpeed = std::clamp(forwardPidOutput, kMinApproachSpeed, kMaxApproachSpeed);
+
+  // If very close, reduce to minimum speed for precision
+  if (std::abs(distanceError) < 0.5) {  // Within 0.5 meters
+    forwardSpeed = std::min(forwardSpeed, kMinApproachSpeed);
   }
-  units::radian_t currentStrafeAngle = units::radian_t(atan2(0.0, forward.value())); // Assuming camera is centered; adjust if not
-  units::radian_t strafeAngleError = desiredStrafeAngle - currentStrafeAngle;
-  const double kp_strafe = 0.1; // Proportional gain for strafe, adjustments may be needed after seeing robot behavior
-  double strafeAdjustment = strafeAngleError.value() * kp_strafe;
-  units::meters_per_second_t strafeCommand = units::meters_per_second_t{strafeAdjustment};
 
-  //units::meters_per_second_t strafeCommand = 0.0_m; //If we are having trouble after seeing robot behavior - try this instead to eliminate variables
+  units::meters_per_second_t forwardCommand{forwardSpeed};
 
-  //Calculate rotation to be aligned to april tag
-  double rotation = m_alignPIDController.Calculate(yaw.value(), 0.0);
-  units::radians_per_second_t rotationsPerSecond{rotation/75};
+  // Calculate strafe (if implementing lateral offset)
+  // Currently set to 0 for straight approach
+  const units::meter_t DESIRED_OFFSET = 0.0_m;
+  units::meters_per_second_t strafeCommand{0.0};
 
-  //Tractorbeam to the april tag (changed from 11.70)
-  if (targetArea < 11.60){
-    frc::SmartDashboard::PutNumber("targetAreaAfterPass", targetArea);
-    Drive(howFar, strafeCommand, rotationsPerSecond, false, true); //field relative needs to be false
+  // Optional: Add lateral offset control here if needed
+  // For now, focusing on forward/rotation for reliability
+
+  // Calculate rotation using PID to align with target
+  double rotationPidOutput = m_alignPIDController.Calculate(yaw.value(), 0.0);
+
+  // Clamp rotation speed to prevent spinning out
+  double rotationSpeed = std::clamp(rotationPidOutput, -kMaxRotationSpeed, kMaxRotationSpeed);
+  units::radians_per_second_t rotationCommand{rotationSpeed};
+
+  // Publish telemetry for tuning
+  frc::SmartDashboard::PutNumber("TractorBeam/Distance", distanceError);
+  frc::SmartDashboard::PutNumber("TractorBeam/Yaw", yaw.value());
+  frc::SmartDashboard::PutNumber("TractorBeam/ForwardSpeed", forwardSpeed);
+  frc::SmartDashboard::PutNumber("TractorBeam/RotationSpeed", rotationSpeed);
+  frc::SmartDashboard::PutBoolean("TractorBeam/AtDistance", m_distancePIDController.AtSetpoint());
+  frc::SmartDashboard::PutBoolean("TractorBeam/AtAngle", m_alignPIDController.AtSetpoint());
+
+  // Stop when close enough (target area threshold or PID at setpoint)
+  if (targetArea >= 11.60 || (m_distancePIDController.AtSetpoint() && m_alignPIDController.AtSetpoint())) {
+    // Target reached - stop
+    Drive(0_mps, 0_mps, 0_rad_per_s, false, true);
+    frc::SmartDashboard::PutString("TractorBeam/Status", "AT TARGET");
   }
-  else{
-    Drive(0_mps, 0_mps, 0_rad_per_s, FIELD_RELATIVE, true);
+  else {
+    // Continue approaching
+    Drive(forwardCommand, strafeCommand, rotationCommand, false, true); // Robot-relative
+    frc::SmartDashboard::PutString("TractorBeam/Status", "APPROACHING");
   }
 }
 
 void DriveSubsystem::PhotonDrive(units::meters_per_second_t forward, units::meters_per_second_t strafe, units::degree_t yaw){
-  double rotation = m_alignPIDController.Calculate(yaw.value(), 0.0);
-  units::radians_per_second_t rotationsPerSecond{rotation/75};
+  // Calculate rotation using PID to align with target
+  double rotationPidOutput = m_alignPIDController.Calculate(yaw.value(), 0.0);
+
+  // Clamp rotation speed to prevent spinning out
+  double rotationSpeed = std::clamp(rotationPidOutput, -kMaxRotationSpeed, kMaxRotationSpeed);
+  units::radians_per_second_t rotationCommand{rotationSpeed};
+
+  // Publish telemetry
+  frc::SmartDashboard::PutNumber("PhotonDrive/Yaw", yaw.value());
+  frc::SmartDashboard::PutNumber("PhotonDrive/RotationSpeed", rotationSpeed);
+  frc::SmartDashboard::PutBoolean("PhotonDrive/Aligned", m_alignPIDController.AtSetpoint());
+
   Drive(
     forward,
     strafe,
-    rotationsPerSecond,
+    rotationCommand,
     FIELD_RELATIVE,
     true
   );
-  /*
-    units::meters_per_second_t xSpeed,
-    units::meters_per_second_t ySpeed, //A
-    units::radians_per_second_t rot, 
-    bool fieldRelative,
-    bool rateLimit
-  */
 }
 
 void DriveSubsystem::SetModuleStates(

@@ -76,6 +76,24 @@ namespace DriveConstants {
 
   const bool FIELD_RELATIVE = true;
 
+  // Vision-Assisted Drive PID Constants
+  // Tuned for fast, accurate approach without overshooting
+
+  // Distance Control (TractorBeam forward motion)
+  constexpr double kDistanceP = 2.5;      // Proportional gain - controls response strength
+  constexpr double kDistanceI = 0.0;      // Integral gain - eliminates steady-state error
+  constexpr double kDistanceD = 0.3;      // Derivative gain - dampens oscillation, prevents overshoot
+  constexpr double kDistanceTolerance = 0.05;  // meters - how close is "close enough"
+  constexpr double kMaxApproachSpeed = 2.0;    // m/s - max speed when approaching target
+  constexpr double kMinApproachSpeed = 0.3;    // m/s - minimum speed to ensure movement
+
+  // Rotation Alignment (auto-rotate to target)
+  constexpr double kAlignP = 0.08;        // Proportional gain - controls rotation response
+  constexpr double kAlignI = 0.0;         // Integral gain
+  constexpr double kAlignD = 0.01;        // Derivative gain - smooth rotation
+  constexpr double kAlignTolerance = 1.0; // degrees - how close is "aligned"
+  constexpr double kMaxRotationSpeed = 3.0;  // rad/s - max rotation speed
+
 }  // namespace DriveConstants
 
 /*
