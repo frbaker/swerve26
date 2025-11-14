@@ -12,6 +12,7 @@
 #include <frc2/command/button/JoystickButton.h>
 #include <units/angle.h>
 #include <units/velocity.h>
+#include <cmath>
 
 #include "Constants.h"
 #include "subsystems/DriveSubsystem.h"
@@ -35,14 +36,25 @@ RobotContainer::RobotContainer() : fieldRelative(FIELD_RELATIVE) {
   // Turning is controlled by the X axis of the right stick.
   m_drive.SetDefaultCommand(frc2::RunCommand(
       [this] {
+        double xSpeed = -frc::ApplyDeadband(
+            m_driverController.GetLeftY(), OIConstants::kDriveDeadband);
+        double ySpeed = -frc::ApplyDeadband(
+            m_driverController.GetLeftX(), OIConstants::kDriveDeadband);
+        double rotSpeed = -frc::ApplyDeadband(
+            m_driverController.GetRightX(), OIConstants::kDriveDeadband);
+
+        // Drive the robot
         m_drive.Drive(
-            -units::meters_per_second_t{frc::ApplyDeadband(
-                m_driverController.GetLeftY(), OIConstants::kDriveDeadband)},
-            -units::meters_per_second_t{frc::ApplyDeadband(
-                m_driverController.GetLeftX(), OIConstants::kDriveDeadband)},
-            -units::radians_per_second_t{frc::ApplyDeadband(
-                m_driverController.GetRightX(), OIConstants::kDriveDeadband)},
+            units::meters_per_second_t{xSpeed},
+            units::meters_per_second_t{ySpeed},
+            units::radians_per_second_t{rotSpeed},
             fieldRelative, true);
+
+        // Update LEDs with robot state
+        m_leds.SetHeading(m_drive.GetHeading());
+        double speed = std::sqrt(xSpeed * xSpeed + ySpeed * ySpeed);
+        m_leds.SetSpeed(speed);
+        m_leds.SetDriveVector(xSpeed, ySpeed);
       },
       {&m_drive}));
 }
@@ -74,29 +86,37 @@ void RobotContainer::ConfigureButtonBindings() {
   frc2::JoystickButton(&m_driverController, frc::XboxController::Button::kLeftBumper)
       .WhileTrue(new frc2::RunCommand(
           [this] {
+            double xSpeed = -frc::ApplyDeadband(
+                m_driverController.GetLeftY(), OIConstants::kDriveDeadband);
+            double ySpeed = -frc::ApplyDeadband(
+                m_driverController.GetLeftX(), OIConstants::kDriveDeadband);
+
             VisionTarget target = GetTarget();
             if (target.hasTarget && target.isDataFresh) {
               frc::SmartDashboard::PutNumber("targetYaw", target.yaw);
               frc::SmartDashboard::PutBoolean("visionActive", true);
               // Driver controls movement, robot auto-rotates to face target
               m_drive.PhotonDrive(
-                  -units::meters_per_second_t{frc::ApplyDeadband(
-                      m_driverController.GetLeftY(), OIConstants::kDriveDeadband)},
-                  -units::meters_per_second_t{frc::ApplyDeadband(
-                      m_driverController.GetLeftX(), OIConstants::kDriveDeadband)},
+                  units::meters_per_second_t{xSpeed},
+                  units::meters_per_second_t{ySpeed},
                   units::degree_t(target.yaw));
             } else {
               frc::SmartDashboard::PutBoolean("visionActive", false);
+              double rotSpeed = -frc::ApplyDeadband(
+                  m_driverController.GetRightX(), OIConstants::kDriveDeadband);
               // Fallback to normal driver control
               m_drive.Drive(
-                  -units::meters_per_second_t{frc::ApplyDeadband(
-                      m_driverController.GetLeftY(), OIConstants::kDriveDeadband)},
-                  -units::meters_per_second_t{frc::ApplyDeadband(
-                      m_driverController.GetLeftX(), OIConstants::kDriveDeadband)},
-                  -units::radians_per_second_t{frc::ApplyDeadband(
-                      m_driverController.GetRightX(), OIConstants::kDriveDeadband)},
+                  units::meters_per_second_t{xSpeed},
+                  units::meters_per_second_t{ySpeed},
+                  units::radians_per_second_t{rotSpeed},
                   fieldRelative, true);
             }
+
+            // Update LEDs
+            m_leds.SetHeading(m_drive.GetHeading());
+            double speed = std::sqrt(xSpeed * xSpeed + ySpeed * ySpeed);
+            m_leds.SetSpeed(speed);
+            m_leds.SetDriveVector(xSpeed, ySpeed);
           },
           {&m_drive}));
 
@@ -114,17 +134,31 @@ void RobotContainer::ConfigureButtonBindings() {
               // Robot auto-rotates and auto-drives to target
               units::meter_t distance{target.distance};
               m_drive.TractorBeam(distance, false, units::degree_t(target.yaw), target.area);
+
+              // Update LEDs with autonomous drive state
+              m_leds.SetHeading(m_drive.GetHeading());
+              m_leds.SetSpeed(0.8);  // Show high speed during autonomous
+              m_leds.SetDriveVector(0.8, 0.0);  // Forward motion
             } else {
               frc::SmartDashboard::PutBoolean("visionActive", false);
+              double xSpeed = -frc::ApplyDeadband(
+                  m_driverController.GetLeftY(), OIConstants::kDriveDeadband);
+              double ySpeed = -frc::ApplyDeadband(
+                  m_driverController.GetLeftX(), OIConstants::kDriveDeadband);
+              double rotSpeed = -frc::ApplyDeadband(
+                  m_driverController.GetRightX(), OIConstants::kDriveDeadband);
               // Fallback to normal driver control
               m_drive.Drive(
-                  -units::meters_per_second_t{frc::ApplyDeadband(
-                      m_driverController.GetLeftY(), OIConstants::kDriveDeadband)},
-                  -units::meters_per_second_t{frc::ApplyDeadband(
-                      m_driverController.GetLeftX(), OIConstants::kDriveDeadband)},
-                  -units::radians_per_second_t{frc::ApplyDeadband(
-                      m_driverController.GetRightX(), OIConstants::kDriveDeadband)},
+                  units::meters_per_second_t{xSpeed},
+                  units::meters_per_second_t{ySpeed},
+                  units::radians_per_second_t{rotSpeed},
                   fieldRelative, true);
+
+              // Update LEDs
+              m_leds.SetHeading(m_drive.GetHeading());
+              double speed = std::sqrt(xSpeed * xSpeed + ySpeed * ySpeed);
+              m_leds.SetSpeed(speed);
+              m_leds.SetDriveVector(xSpeed, ySpeed);
             }
           },
           {&m_drive}));
@@ -134,28 +168,36 @@ void RobotContainer::ConfigureButtonBindings() {
   frc2::JoystickButton(&m_driverController, frc::XboxController::Button::kB)
       .WhileTrue(new frc2::RunCommand(
           [this] {
+            double xSpeed = -frc::ApplyDeadband(
+                m_driverController.GetLeftY(), OIConstants::kDriveDeadband);
+            double ySpeed = -frc::ApplyDeadband(
+                m_driverController.GetLeftX(), OIConstants::kDriveDeadband);
+
             VisionTarget target = GetTarget();
             if (target.hasTarget && target.isDataFresh) {
               frc::SmartDashboard::PutBoolean("visionActive", true);
               m_drive.PhotonDrive(
                   // driver controls direction of travel, rotation faces target
-                  -units::meters_per_second_t{frc::ApplyDeadband(
-                      m_driverController.GetLeftY(), OIConstants::kDriveDeadband)},
-                  -units::meters_per_second_t{frc::ApplyDeadband(
-                      m_driverController.GetLeftX(), OIConstants::kDriveDeadband)},
+                  units::meters_per_second_t{xSpeed},
+                  units::meters_per_second_t{ySpeed},
                   units::degree_t(target.yaw));
             } else {
               frc::SmartDashboard::PutBoolean("visionActive", false);
+              double rotSpeed = -frc::ApplyDeadband(
+                  m_driverController.GetRightX(), OIConstants::kDriveDeadband);
               // Fallback to normal driver control
               m_drive.Drive(
-                  -units::meters_per_second_t{frc::ApplyDeadband(
-                      m_driverController.GetLeftY(), OIConstants::kDriveDeadband)},
-                  -units::meters_per_second_t{frc::ApplyDeadband(
-                      m_driverController.GetLeftX(), OIConstants::kDriveDeadband)},
-                  -units::radians_per_second_t{frc::ApplyDeadband(
-                      m_driverController.GetRightX(), OIConstants::kDriveDeadband)},
+                  units::meters_per_second_t{xSpeed},
+                  units::meters_per_second_t{ySpeed},
+                  units::radians_per_second_t{rotSpeed},
                   fieldRelative, true);
             }
+
+            // Update LEDs
+            m_leds.SetHeading(m_drive.GetHeading());
+            double speed = std::sqrt(xSpeed * xSpeed + ySpeed * ySpeed);
+            m_leds.SetSpeed(speed);
+            m_leds.SetDriveVector(xSpeed, ySpeed);
           },
           {&m_drive}));
 

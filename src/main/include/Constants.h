@@ -166,4 +166,23 @@ namespace OIConstants {
 //
 // =============================================================================
 
+namespace LEDConstants {
+    // WS2815 LED strip on PWM port
+    constexpr int kPWMPort = 0;
+
+    // LED strip length (300 LEDs for 16.4ft strip)
+    constexpr int kStripLength = 300;
+
+    // Team colors (customize for your team)
+    // Color 1 - Red
+    constexpr int kTeamColor1_R = 255;
+    constexpr int kTeamColor1_G = 0;
+    constexpr int kTeamColor1_B = 0;
+
+    // Color 2 - White
+    constexpr int kTeamColor2_R = 255;
+    constexpr int kTeamColor2_G = 255;
+    constexpr int kTeamColor2_B = 255;
+}  // namespace LEDConstants
+
 
