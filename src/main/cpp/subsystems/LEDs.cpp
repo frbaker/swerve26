@@ -4,6 +4,7 @@
 
 #include "subsystems/LEDs.h"
 #include "Constants.h"
+#include <frc/DriverStation.h>
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>
@@ -30,11 +31,21 @@ LEDs::LEDs() : m_led(LEDConstants::kPWMPort) {
 }
 
 void LEDs::Periodic() {
+  // If LEDs are manually disabled, turn them off
   if (!m_enabled) {
     UpdateDisabledMode();
+    m_led.SetData(m_ledBuffer);
     return;
   }
 
+  // When robot is disabled (not in match), show fire effect
+  if (frc::DriverStation::IsDisabled()) {
+    UpdateFireMode();
+    m_led.SetData(m_ledBuffer);
+    return;
+  }
+
+  // When robot is enabled, use selected mode
   switch (m_mode) {
     case Mode::kDirectional:
       UpdateDirectionalMode();
